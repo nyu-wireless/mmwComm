@@ -5,7 +5,7 @@ classdef PDSCHSimParam < matlab.mixin.SetGet
         % Settable parameters.  These should be set in the constructor
         NLayers = 1;    % number of layers
         Modulation = 'QPSK';  
-        NRB = 51;  % number of resource blocks
+        NRB = 66;  % number of resource blocks
         SubcarrierSpacing = 120;  % SCS in kHZ
         fc = 28e9;  % carrier frequency in Hz
         
@@ -17,7 +17,7 @@ classdef PDSCHSimParam < matlab.mixin.SetGet
         
         % Waveform parameters
         waveformConfig;
-         
+		
     end
     
     methods
@@ -47,7 +47,11 @@ classdef PDSCHSimParam < matlab.mixin.SetGet
             obj.pdschConfig = mmwsim.nr.PDSCHConfig(...
                 'PRBSet', (0:obj.NRB-1), ...
                 'SymbolSet', (0:obj.waveformConfig.SymbolsPerSlot-1), ...
-                'Reserved', res);                                                     
+                'Reserved', res, ...
+				'EnablePTRS', 1,...
+				'PTRSFrequencyDensity', 2, ...
+				'PTRSTimeDensity', 1, ...
+				'PTRSREOffset', '00');                                                 
         end
         
       

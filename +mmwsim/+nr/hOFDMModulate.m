@@ -83,7 +83,7 @@ function [waveform,info] = hOFDMModulate(gnb,grid,varargin)
     end
 
     % Get dimensionality information derived from the parameters
-    info = nr.hOFDMInfo(gnb);
+    info = mmwsim.nr.hOFDMInfo(gnb);
     % Cache the main dims
     nSC = info.NSubcarriers;
     nFFT = info.Nfft;

@@ -26,7 +26,13 @@ classdef PDSCHConfig < matlab.mixin.SetGet
         %ReservedPeriod = [];       % 
         % PDSCH resource block mapping (TS 38.211 Section 7.3.1.6)
         VRBToPRBInterleaving = 0;   % Disable interleaved resource mapping
-        Modulation = 'QPSK';          
+        Modulation = 'QPSK';
+		
+		% Phase tracking
+		EnablePTRS = 0;             % Enable or disable PT-RS (1 or 0)
+		PTRSFrequencyDensity = 2;   % Frequency density (2,4)
+		PTRSTimeDensity = 1;        % Time density (1,2,4)
+		PTRSREOffset = '00';        % Resource element offset ('00','01','10','11')
     end
     
     methods        

@@ -16,6 +16,7 @@ classdef NRgNBTx < matlab.System
         bits;           % TX bits
         pdschSym;       % TX symbols
         dmrsSym;        % TX data symbols
+        ptrsSym;        % TX data symbols
         
         % Slot number
         Nslot = 0;
@@ -70,7 +71,8 @@ classdef NRgNBTx < matlab.System
                 obj.pdschConfig.NLayers);
             
             % Get information for PDSCH and DM-RS allocations
-            [pdschIndices,dmrsIndices,obj.dmrsSym,pdschIndicesInfo] = ...
+            [pdschIndices,dmrsIndices,obj.dmrsSym,ptrsIndices, ...
+				obj.ptrsSym, pdschIndicesInfo] = ...
                 mmwsim.nr.hPDSCHResources(obj.carrierConfig, obj.pdschConfig);
             
             % Generate random bits
@@ -87,12 +89,14 @@ classdef NRgNBTx < matlab.System
             % Map symbols to OFDM grid
             obj.ofdmGridLayer(pdschIndices) = obj.pdschSym;
             obj.ofdmGridLayer(dmrsIndices) = obj.dmrsSym;
+            obj.ofdmGridLayer(ptrsIndices) = obj.ptrsSym;
             
             
             % Fill the channel with labels of the channels.
             % This is just for visualization
             obj.ofdmGridChan(pdschIndices) = 1;
-            obj.ofdmGridChan(dmrsIndices) = 2;    
+            obj.ofdmGridChan(dmrsIndices) = 2; 
+            obj.ofdmGridChan(ptrsIndices) = 3;   
             
             % Perform the OFDM modulation
             xlayer = mmwsim.nr.hOFDMModulate(obj.carrierConfig, obj.ofdmGridLayer);
@@ -106,8 +110,6 @@ classdef NRgNBTx < matlab.System
             
             % Increment the slot number
             obj.Nslot = obj.Nslot + 1;
-            
-            
         end        
       
     end

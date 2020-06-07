@@ -50,18 +50,21 @@ classdef NRUERx < matlab.System
         
         function stepImpl(obj, y)
             
-            % TODO:  Perform RX beamforming by multiplying y with the
-            % the RX BF vector.  
-            %   z = ...
+            % Get information for PDSCH, DM-RS and PT-RS allocations
+            [pdschIndices,dmrsIndices,dmrsSymbols,ptrsIndices, ...
+				ptrsSym, pdschIndicesInfo] = ...
+                mmwsim.nr.hPDSCHResources(obj.carrierConfig, obj.pdschConfig);
+			
+            % Perform RX beamforming by multiplying y with the
+            % the RX BF vector.
             z = y*obj.rxBF;
-                         
-            % Get information for PDSCH and DM-RS allocations
-            [pdschIndices,dmrsIndices,dmrsSymbols,pdschIndicesInfo] = ...
-                mmwsim.nr.hPDSCHResources(obj.carrierConfig, obj.pdschConfig);                       
             
             % Demodulate the RX signal
             obj.ofdmGrid = mmwsim.nr.hOFDMDemodulate(obj.carrierConfig, z);
-                  
+			
+			% Estimate the Phase Noise
+			obj.ofdmGrid = mmwsim.nr.PTRSEstimate(ptrsIndices, ptrsSym, obj.ofdmGrid);
+			
             % Get channel estimate.
             % This is a poor channel estimate since we have not done
             % carrier and timing estimation.  But, this is OK for now.
@@ -69,7 +72,7 @@ classdef NRUERx < matlab.System
                 obj.ofdmGrid,dmrsIndices,dmrsSymbols,...
                 'CyclicPrefix',obj.carrierConfig.CyclicPrefix,...
                 'CDMLengths',pdschIndicesInfo.CDMLengths);
-            
+			
             % Extract raw symbols and channel estimate on PDSCH
             obj.pdschSymRaw = obj.ofdmGrid(pdschIndices);
             obj.pdschChanEst = chanEstGrid(pdschIndices);
