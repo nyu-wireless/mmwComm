@@ -32,7 +32,7 @@ classdef MIMOMPChan < matlab.System
             % The syntax allows you to call the constructor with syntax of
             % the form:
             %
-            %     chan = SISOMPChan('Prop1', Val1, 'Prop2', val2, ...);
+            %     chan = MIMOMPChan('Prop1', Val1, 'Prop2', val2, ...);
             if nargin >= 1
                 obj.set(varargin{:});
             end
@@ -76,14 +76,11 @@ classdef MIMOMPChan < matlab.System
             % The input, x, should be nsamp x nanttx, 
             
                         
-            % TODO:  Compute the delay in samples
-            %    dlySamp = ...
+            % Compute the delay in samples
             dlySamp = obj.dly*obj.fsamp;                        
             
-            % TODO:  Get the TX steering vectors and element gains
-            % along the angles of departure using the 
-            %    [obj.utx, obj.gainTx] = obj.txArr.step(...);            
-            %    [obj.urx, obj.gainRx] = obj.rxArr.step(...);            
+            % Get the TX steering vectors and element gains along the 
+			% angles of departure using the        
             [obj.utx, obj.gainTx] = obj.txArr.step(obj.aodAz, obj.aodEl);            
             [obj.urx, obj.gainRx] = obj.rxArr.step(obj.aoaAz, obj.aoaEl);
             
@@ -99,43 +96,40 @@ classdef MIMOMPChan < matlab.System
             npath = length(obj.dly);
             y = zeros(nsamp,nantrx);
             
-            % TODO:  Get the Doppler shift of each path from the TX and
-            % RX using txArr.doppler() and rxArr.doppler() methods
-            %    obj.dop = ...
+            % Get the Doppler shift of each path from the TX and RX using 
+			% txArr.doppler() and rxArr.doppler() methods
             obj.dop = obj.rxArr.doppler(obj.aoaAz, obj.aoaEl) + ...
                       obj.txArr.doppler(obj.aodAz, obj.aodEl);
             
-            % TODO:  Using the Doppler shifts, compute the phase rotations 
+            % Using the Doppler shifts, compute the phase rotations 
             % on each path.  Specifically, if nsamp = length(x), create a
             % (nsamp+1) x npath matrix 
             %     phase(i,k) = phase rotation on sample i and path k
             nsamp = size(x,1);
             phase = 2*pi*(0:nsamp)'*obj.dop/obj.fsamp + obj.phaseInit;
             
-            % TODO:  Save the final phase, phase(nsamp+1,:)
-            % as phaseInit for the next step.
+            % Save the final phase, phase(nsamp+1,:) as phaseInit for the 
+			% next step.
             obj.phaseInit = phase(nsamp+1,:);
             
             % Loop over the paths
             for ipath = 1:npath
 
-                % TODO:  Compute the transmitted signal, x, along the 
-                % TX spatial signature for path ipath. 
-                %   z = ... You should get a nsamp x 1 vetor
+                % Compute the transmitted signal, x, along the 
+                % TX spatial signature for path ipath.
                 z = x*obj.utx(:,ipath);
 
-                % TODO:  Delay the path by the dlySamp(ipath) using
-                % the fractional delay object
+                % Delay the path by the dlySamp(ipath) using the fractional
+				% delay object
                 z = obj.fracDly(z,dlySamp(ipath));
                 
-                % TODO:  Multiply by the gain 
+                % Multiply by the gain 
                 z = gainLin(ipath)*z;
                 
-                % TODO: Rotate by the phase 
+                % Rotate by the phase 
                 z = z .* exp(1i*phase(1:nsamp,ipath));
                 
-                % TODO:  Multiply by the RX spatial signature 
-                % and add to y
+                % Multiply by the RX spatial signature and add to y
                 y = y +  z*obj.urx(:,ipath).';
             end
           

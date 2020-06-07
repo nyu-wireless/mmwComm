@@ -17,7 +17,9 @@ classdef PDSCHSimParam < matlab.mixin.SetGet
         
         % Waveform parameters
         waveformConfig;
-         
+
+		% ADC resolution
+		nbadc = 0;
     end
     
     methods
@@ -53,11 +55,7 @@ classdef PDSCHSimParam < matlab.mixin.SetGet
 				'PTRSFrequencyDensity', 2, ...
 				'PTRSTimeDensity', 1, ...
 				'PTRSREOffset', '00'); 
-        end
-        
-      
-        
-      
+		end
     end
 end
 

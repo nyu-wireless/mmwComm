@@ -47,14 +47,14 @@ aoaEl = 90-chaninfo.AnglesZoA;
 aodAz  = chaninfo.AnglesAoD;
 aodEl = 90-chaninfo.AnglesZoD;
 dly = chaninfo.PathDelays;
-
-im = 2;
-gain = gain(im);
-aoaAz = aoaAz(im);
-aoaEl = aoaEl(im);
-aodAz = aodAz(im);
-aodEl = aodEl(im);
-dly = dly(im);
+% 
+% im = 2;
+% gain = gain(im);
+% aoaAz = aoaAz(im);
+% aoaEl = aoaEl(im);
+% aodAz = aodAz(im);
+% aodEl = aodEl(im);
+% dly = dly(im);
 
 %% Create the antenna arrays for the gNB and the UE
 
@@ -264,33 +264,48 @@ bwGain = 10*log10(tx.waveformConfig.Nfft/tx.waveformConfig.NSubcarriers);
 snrTheory = snrPerAntenna + bwGain + 10*log10(nantrx);
 fprintf(1,'SNR theoretical = %7.2f\n', snrTheory);
 %% Sweep the SNR
-SNRtest = -10:5:50;
+ADCtest = [0, 6];
+SNRtest = -10:2:40;
 snrEq = zeros(size(SNRtest));
 snrTheory = zeros(size(SNRtest));
 nantrx = prod(nantUE);
 bwGain = 10*log10(tx.waveformConfig.Nfft/tx.waveformConfig.NSubcarriers);
+Erx = mean(abs(y).^2, 'all');
 	
-for idx = 1:length(SNRtest)
-	snrPerAntenna = SNRtest(idx);
-	Erx = mean(abs(y).^2, 'all');
-	Enoise = 10.^(-0.1*snrPerAntenna)*Erx;
-	ynoisy = y + sqrt(Enoise/2)*(randn(size(y)) +1i*randn(size(y)));
-
-	rx.step(ynoisy);
-	
-	Err = mean(abs(rx.pdschSymRaw - rx.pdschChanEst.*tx.pdschSym).^2, 1);
-	Erx = mean(abs(rx.pdschSymRaw).^2, 1);
-	snrEq(idx) = mean(10*log10(Erx./Err));
-	
-	snrTheory(idx) = snrPerAntenna + bwGain + 10*log10(nantrx);
-end
-
 figure;
-plot(SNRtest, snrEq, '-');
+for nbadc = ADCtest
+	% Creates simulation parameters for this demo
+	simParam = PDSCHSimParam('fc', fc, 'nbadc', nbadc);
+	% Create a RX object with the correct rxBF vector
+	rx = NRUERx(simParam, 'rxBF', wrx);
+	for snr = 1:length(SNRtest)
+		snrPerAntenna = SNRtest(snr);
+		snrEq(snr) = 0;
+		for idx=1:10
+			x = tx.step();
+			y = chan.step(x);
+			
+			Enoise = 10.^(-0.1*snrPerAntenna)*Erx;
+			ynoisy = y + sqrt(Enoise/2)*(randn(size(y)) +1i*randn(size(y)));
+
+			rx.step(ynoisy);
+
+			Err = mean(abs(rx.pdschSymRaw - rx.pdschChanEst.*tx.pdschSym).^2, 1);
+			Erxeq = mean(abs(rx.pdschSymRaw).^2, 1);
+			snrEq(snr) = snrEq(snr) + mean(10*log10(Erxeq./Err));
+		end
+		snrEq(snr) = snrEq(snr)/10;
+		snrTheory(snr) = snrPerAntenna + bwGain + 10*log10(nantrx);
+	end
+	hold on;
+	plot(SNRtest, snrEq, 'linewidth', 2);
+	hold off;
+end
 hold on;
-plot(SNRtest, snrTheory, '-');
+plot(SNRtest, snrTheory, 'linewidth', 2);
 hold off;
 grid on;
 xlabel('SNR per Antenna');
 ylabel('SNR');
-legend('Equalized', 'Theory');
+legend('Equalized (6-bit ADC)', 'Equalized (inf-bit ADC)', 'Theory');
+title('Multi-Carrier / Multi-Path');

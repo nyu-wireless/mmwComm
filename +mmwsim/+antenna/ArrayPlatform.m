@@ -89,10 +89,8 @@ classdef ArrayPlatform < matlab.System
         function setupImpl(obj)
             % setup:  This is called before the first step.
             
-            % TODO: Create the steering vector object using the
-            % array. 
-            %    obj.sv = ...
-            obj.sv = phased.SteeringVector('SensorArray',obj.arr);
+            % Create the steering vector object using the array.
+            obj.sv = phased.SteeringVector('SensorArray', obj.arr);
         end
         
         function releaseImpl(obj)

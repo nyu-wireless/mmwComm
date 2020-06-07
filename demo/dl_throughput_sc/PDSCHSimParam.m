@@ -17,7 +17,9 @@ classdef PDSCHSimParam < matlab.mixin.SetGet
         
         % Waveform parameters
         waveformConfig;
-		
+
+		% ADC resolution
+		nbadc = 0;
     end
     
     methods
@@ -44,6 +46,7 @@ classdef PDSCHSimParam < matlab.mixin.SetGet
             res.Symbols = 0;  % Reserve first symbol
             res.PRB = (0:obj.NRB-1);      % Reserve all RBs
             res.Period = 1;  % Reserve on every slot
+			
             obj.pdschConfig = mmwsim.nr.PDSCHConfig(...
                 'PRBSet', (0:obj.NRB-1), ...
                 'SymbolSet', (0:obj.waveformConfig.SymbolsPerSlot-1), ...
@@ -51,12 +54,8 @@ classdef PDSCHSimParam < matlab.mixin.SetGet
 				'EnablePTRS', 1,...
 				'PTRSFrequencyDensity', 2, ...
 				'PTRSTimeDensity', 1, ...
-				'PTRSREOffset', '00');                                                 
-        end
-        
-      
-        
-      
+				'PTRSREOffset', '00'); 
+		end
     end
 end
 

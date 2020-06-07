@@ -29,13 +29,11 @@ classdef InterpPatternAntenna < matlab.System
             % setup:  This is called before the first step.            
             % We will use this point to create the interpolator.
             
-            % TODO: Get the pattern from ant.pattern
+            % Get the pattern from ant.pattern
             [dirPat,azPat,elPat] = obj.ant.pattern(...
                 obj.fc,'Type', 'Directivity');                     
             
-            % TODO:  Create the gridded interpolant object.  You can follow
-            % the demo in the antennas lecture
-            %     obj.dirInterp = griddedInterpolant(...)
+            % Create the gridded interpolant object.
             obj.dirInterp = griddedInterpolant({elPat,azPat},dirPat);         
             
         end
@@ -43,11 +41,9 @@ classdef InterpPatternAntenna < matlab.System
             % Computes the directivity along az and el angles in the local
             % reference frame         
             
-            % TODO:  Run the interplationn object to compute the directivity
+            % Run the interplation object to compute the directivity
             % in the local angles
-            %   dir = obj.dirInterp(...)
-            dir = obj.dirInterp(el,az);
-            
+            dir = obj.dirInterp(el,az);            
         end
     end
 end

@@ -26,6 +26,8 @@ classdef NRUERx < matlab.System
         % Timing offset
         offset;
         
+		% RF Front-End
+		rfferx;
     end
     
     methods
@@ -38,6 +40,7 @@ classdef NRUERx < matlab.System
             obj.carrierConfig = mmwsim.nr.objtostruct( simParam.carrierConfig );
             obj.pdschConfig = mmwsim.nr.objtostruct( simParam.pdschConfig );
             obj.waveformConfig = mmwsim.nr.objtostruct( simParam.waveformConfig );
+			obj.rfferx = mmwsim.rffe.RFFERx('nbadc', simParam.nbadc);
             
             % Set parameters from constructor arguments
             if nargin >= 1
@@ -49,7 +52,8 @@ classdef NRUERx < matlab.System
     methods (Access = protected)
         
         function stepImpl(obj, y)
-            
+            y = obj.rfferx.step(y);
+			
             % Get information for PDSCH, DM-RS and PT-RS allocations
             [pdschIndices,dmrsIndices,dmrsSymbols,ptrsIndices, ...
 				ptrsSym, pdschIndicesInfo] = ...
