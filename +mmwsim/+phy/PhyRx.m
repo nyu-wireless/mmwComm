@@ -3,7 +3,7 @@ classdef PhyRx < matlab.System
 	
 	properties
         carrierConfig;  % Carrier configuration
-		nbadc = 0;		% 0: Infinite processing
+		nbitsADC = 0;	% 0: Infinite processing
 						% >0: Fixed-point processing
 		
 		% CC Filter design specifications
@@ -16,11 +16,10 @@ classdef PhyRx < matlab.System
 		bfilt;			% num coeffs
 		afilt;			% denom coeffs
 		hd;				% filter design
-				
-		% Component Carrier Aggregation
-		CarrierAggregationEnable = true;
-		componentCarrier = 4;
-		fc = [150e6, 50e6, -50e6, -150e6];
+		
+        % Carrier aggregation
+        ncc = 1;
+		ccFreq;
 		fsamp = 491.52e6;	% sample frequency
 	end
 	
@@ -34,16 +33,17 @@ classdef PhyRx < matlab.System
 			end
 		end
 	end
+	
 	methods (Access = protected)
         function setupImpl(obj)
-			if obj.nbadc > 0
+			if obj.nbitsADC > 0
 				% Find the effective signal bandwidth:
 				%
 				% * ResourceBlocks * 12 * SubCarrierSpacing
 				fsig = obj.carrierConfig.NRB * 12 * ...
 					obj.carrierConfig.SubcarrierSpacing * 1e3;
 				obj.Fp = fsig/obj.fsamp;
-				obj.Fst = 1/obj.componentCarrier;
+				obj.Fst = 1/obj.ncc;
 
 				% Design a Fixed-Point Filter
 				spec = fdesign.lowpass('Fp,Fst,Ap,Ast', ...
@@ -64,8 +64,8 @@ classdef PhyRx < matlab.System
 				obj.hd.CoeffWordLength = obj.nbcoeff;
 				all(obj.hd.Numerator == round(obj.hd.Numerator));
 
-				% Integer real input from ADC with nbadc resolution
-				obj.hd.InputWordLength = obj.nbadc;
+				% Integer real input from ADC with nbitsADC resolution
+				obj.hd.InputWordLength = obj.nbitsADC;
 				obj.hd.InputFracLength = 0;
 
 				obj.bfilt = obj.hd.Numerator;
@@ -74,26 +74,27 @@ classdef PhyRx < matlab.System
 		end
 		
         function y = stepImpl(obj, x)
-			if obj.CarrierAggregationEnable
-				y = zeros(size(x,1)/obj.componentCarrier, size(x,2), obj.componentCarrier);
-				for ncc=1:obj.componentCarrier
+			if obj.ncc == 1
+				% We have a single component carrier.
+				y = x;
+			else
+				y = zeros(size(x,1)/obj.ncc, size(x,2), obj.ncc);
+				for cc = 1:obj.ncc
 					% Use a numerically controlled oscillator to bring the 
 					% component carrier of interest to the middle of the
 					% spectrum
-					xnco = mmwsim.nr.hCarrierAggregationModulate(x, obj.fsamp, obj.fc(ncc));
+					xnco = mmwsim.nr.hCarrierAggregationModulate(x, obj.fsamp, obj.ccFreq(cc));
 
 					% filter the input signal
-					if obj.nbadc > 0
+					if obj.nbitsADC > 0
 						xfilt = filter(obj.bfilt, obj.afilt, xnco);
 					else
 						xfilt = lowpass(xnco, 0.1934,'ImpulseResponse','fir','Steepness',0.95);
 					end
+					
 					% Downsample the filted signal
-					y(:,:,ncc) = resample(xfilt, 1, obj.componentCarrier);
+					y(:,:,cc) = resample(xfilt, 1, obj.ncc);
 				end
-			else
-				% We have a single component carrier.
-				y = x;
 			end
 		end
 	end
