@@ -138,10 +138,11 @@ if hpc
 else
 	ncal = 10;
 end
-EyAvg = zeros(ncal, 1);
 
 % Saturation levels of the lna to test
 satLevTest = linspace(0, 20, 5);
+
+EyAvg = zeros(ncal, 1);
 numsat = length(satLevTest);
 
 if ~hpc
@@ -176,7 +177,11 @@ for i = 1:ncal
 		waitbar(i/ncal, f, 'Calibrating...');
 	end
 end
-close(f);
+
+if ~hpc
+	close(f);
+end
+
 EyAvg = mean(EyAvg);
 %% Main simulation loop
 % We next loop over the input SNRs and measure the SNR post equalization
@@ -184,14 +189,13 @@ EyAvg = mean(EyAvg);
 if hpc
 	ADCtest = [4,6,0]';
 	SNRtest = (-10:0.5:30)';
-	satLevTest = 0:1:20;
-	nit = 100;
+	nit = 10;
 else
 	ADCtest = [4,6,0]';
 	SNRtest = (-10:2:30)';
-	satLevTest = linspace(0, 20, 5);
 	nit = 10;
 end
+satLevTest = linspace(0, 20, 5);
 
 numsat = length(satLevTest);
 numnbadc = length(ADCtest);
