@@ -16,9 +16,9 @@ nantgNB = [8,8];    % array size at the gNB (base station)
 ueVel = [5 0 0];    % UE velocity vector in m/s
 ncc = 1;            % number of component carriers (1 or 4)
 singPath = true;	% Use only the strongest path
-phaseNoise = false; % Include the phase noise of the RFFE
+phaseNoise = false;  % Include the phase noise of the RFFE
 nonLin = true;		% Include the non-linearity of the RFFE
-hpc = false;		% Run larger experiments using the NYU HPC 
+hpc = true;		% Run larger experiments using the NYU HPC 
 
 % Parameters describing the PDSCH  
 simParam = PDSCHSimParam('fc', fc);
@@ -129,14 +129,25 @@ AFUE = 20*log10(abs(wrx.'*urx));
 % Compute the gain on each path adding the array factors and elemement
 % gains.
 gainDir = gain + AFgNB + AFUE + elemGainTx + elemGainRx;
-
-%% Calibration
+%% ADC Calibration
 % To set the noise power and ADC quantization levels, we run a large number
 % of slots
-ncal = 10;
-EyAvg = zeros(ncal,1);
 
-f = waitbar(0,'Calibrating');
+if hpc
+	ncal = 100;
+else
+	ncal = 10;
+end
+EyAvg = zeros(ncal, 1);
+
+% Saturation levels of the lna to test
+satLevTest = linspace(0, 20, 5);
+numsat = length(satLevTest);
+
+if ~hpc
+	f = waitbar(0,'Calibrating');
+end
+
 for i = 1:ncal
     
     % Create a TX object using the NRgNBTx object for each CC.
@@ -151,32 +162,41 @@ for i = 1:ncal
     % Simulate TX and channel
     x = tx.step();
     y = chan.step(x);
-    
-    % Measure average power
-    EyAvg(i) = mean(abs(y).^2, 'all');    
-    
-    waitbar(i/ncal,f, 'Calibrating...');
-    
+    	
+	for isat=1:numsat
+		vsat = sqrt(mean(abs(y).^2, 'all')*10.^(0.1*satLevTest(isat)));
+		lna = mmwsim.rffe.LNA('nonLin', nonLin, 'satLev', vsat);
+		ymix = lna.step(y);
+		
+		% Measure average power
+		EyAvg(i, isat) = mean(abs(ymix).^2, 'all');    
+	end
+	
+	if ~hpc
+		waitbar(i/ncal, f, 'Calibrating...');
+	end
 end
 close(f);
 EyAvg = mean(EyAvg);
-
 %% Main simulation loop
 % We next loop over the input SNRs and measure the SNR post equalization
 % for each number of bitsrx
 if hpc
-	ADCtest = [0,4,6]';
+	ADCtest = [4,6,0]';
 	SNRtest = (-10:0.5:30)';
+	satLevTest = 0:1:20;
 	nit = 100;
 else
-	ADCtest = [0,4,6]';
+	ADCtest = [4,6,0]';
 	SNRtest = (-10:2:30)';
+	satLevTest = linspace(0, 20, 5);
 	nit = 10;
 end
 
+numsat = length(satLevTest);
 numnbadc = length(ADCtest);
 numsnr = length(SNRtest);
-snrEq = zeros(numsnr, numnbadc, nit);
+snrEq = zeros(numsnr, numsat, numnbadc, nit);
 
 % Loop over SNR values
 for isnr = 1:numsnr
@@ -198,35 +218,42 @@ for isnr = 1:numsnr
         x = tx.step();
         y = chan.step(x);
         
-        % Add noisex
-        Enoise = 10.^(-0.1*snrAnt)*EyAvg;
-        ynoisy = y + sqrt(Enoise/2)*(randn(size(y)) +1i*randn(size(y)));
-        
-        for iadc = 1:numnbadc
-            
-            % Get number of ADC bits
-            nbadc = ADCtest(iadc);
-            
-            % Create the RX            
-            rxInputVar = EyAvg + Enoise;
-            rx = NRUERx(simParam, 'rxBF', wrx, 'nbitsADC', nbadc, ...
-                'adcInputVar', rxInputVar, 'ncc', ncc, 'nonLin', nonLin, ...
-				'phaseNoise', phaseNoise);      
-            rx.step(ynoisy);
-            
-            % Measure the post equalization SNR
-            Err = mean(abs(rx.pdschSymRaw - rx.pdschChanEst.*tx.pdschSym).^2, 1);
-            Erxeq = mean(abs(rx.pdschSymRaw).^2, 1);
-            snrEq(isnr,iadc,it) = mean(10*log10(Erxeq./Err));
-        end
-        
-    end
+		for isat = 1:numsat
+			% Add noise
+			Enoise = 10.^(-0.1*snrAnt)*EyAvg(isat);
+			ynoisy = y + sqrt(Enoise/2)*(randn(size(y)) +1i*randn(size(y)));
+
+			for iadc = 1:numnbadc
+				% Get the Saturation Level of the lna
+				vsat = sqrt(mean(abs(y).^2, 'all')*10.^(0.1*satLevTest(isat)));
+				
+				% Get number of ADC bits
+				nbadc = ADCtest(iadc);
+
+				% Create the RX            
+				rxInputVar = EyAvg(isat) + Enoise;
+				rx = NRUERx(simParam, 'rxBF', wrx, 'nbitsADC', nbadc, ...
+					'adcInputVar', rxInputVar, 'ncc', ncc, 'nonLin', nonLin, ...
+					'phaseNoise', phaseNoise, 'satLev', vsat);
+				rx.step(ynoisy);
+
+				% Measure the post equalization SNR
+				Err = mean(abs(rx.pdschSymRaw - rx.pdschChanEst.*tx.pdschSym).^2, 1);
+				Erxeq = mean(abs(rx.pdschSymRaw).^2, 1);
+				snrEq(isnr, isat, iadc, it) = mean(10*log10(Erxeq./Err));
+			end
+		end        
+	end
     
-    % Print progress
-    for iadc = 1:numnbadc
-        fprintf(1,'snr=%7.2f nb=%d snrEq = %7.2f\n', snrAnt, ADCtest(iadc),...
-            mean(snrEq(isnr,iadc,:)) );
-    end
+	if ~hpc
+		% Print progress
+		for isat = 1:numsat
+			for iadc = 1:numnbadc
+				fprintf(1,'snr=%7.2f satLev=%7.2f nb=%d snrEq = %7.2f\n', ...
+					snrAnt, satLevTest(isat), ADCtest(iadc), mean(snrEq(isnr,isat,iadc,:)));
+			end
+		end
+	end
 end
 
 %% Compute theoretical maximum SNR
@@ -240,26 +267,39 @@ if hpc
 	save(strcat('workspace','_',num2str(aID),'.mat'))
 else
 	% Create legend strings
-	nplot = numnbadc + 1;
+	nplot = numsat + 1;
 	legstr = cell(nplot,1);
-	for i = 1:numnbadc
-		nb = ADCtest(i);
-		if nb == 0
-			legstr{i} = 'nbits=inf';        
-		else
-			legstr{i} = sprintf('nbits=%d', nb);        
-		end
+	for i = 1:numsat
+		satLev = satLevTest(i);
+		legstr{i} = sprintf('satLev=%7.2f', satLev);
 	end
 	legstr{nplot} = 'Theory';
 
-	% Create plot
-	snrEqAvg = mean(snrEq,3);
-	plot(SNRtest, snrEqAvg, '-', 'linewidth', 2);
-	hold on;
-	plot(SNRtest, snrTheory, '--', 'linewidth', 2);
-	grid on;
-	xlabel('SNR per Antenna');
-	ylabel('SNR post-EQ');
-	legend(legstr, 'Location', 'NorthWest');
-	title('Single-Carrier / Single-Path');
+	for iadc = 1:numnbadc
+		figure;
+		nb = ADCtest(iadc);
+		% Create plot
+		snrEqAvg = mean(snrEq, 4);
+		plot(SNRtest, snrEqAvg(:,:,iadc), '-', 'linewidth', 2);
+		hold on;
+		plot(SNRtest, snrTheory, '--', 'linewidth', 2);
+		grid on;
+		xlabel('SNR per Antenna');
+		ylabel('SNR post-EQ');
+		legend(legstr, 'Location', 'NorthWest');
+		
+		if nb == 0
+			titlestr = sprintf('nbadc = inf | ncc = %d', ncc);
+		else
+			titlestr = sprintf('nbadc = %d | ncc = %d', nb, ncc);
+		end
+		
+		if singPath
+			titlestr = sprintf('%s | Single Path', titlestr);
+		else
+			titlestr = sprintf('%s | Multi Path', titlestr);
+		end
+		
+		title(titlestr);
+	end
 end

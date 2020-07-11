@@ -31,10 +31,10 @@ classdef RFFERx < matlab.System
 			% Apply phase noise to waveform
 			fc = 28e9;
 			sr = 491.52e6;
-			foffsetLog = (3:0.1:log10(sr/2));
+			foffsetLog = (4.5:0.1:log10(sr/2));
 			foffset = 10.^foffsetLog;
 			PN_dBc_Hz = obj.PNmodelPoleZero(foffset,fc);
-			obj.pnoise = comm.PhaseNoise('FrequencyOffset',foffset,'Level',PN_dBc_Hz,'SampleRate',sr);			
+			obj.pnoise = comm.PhaseNoise('FrequencyOffset',foffset,'Level', PN_dBc_Hz,'SampleRate',sr);			
 			
             % Create and configure a memoryless nonlinearity to model the 
             % amplifier
@@ -48,6 +48,7 @@ classdef RFFERx < matlab.System
 		end
 		
         function y = stepImpl(obj, x)
+			
 			if obj.phaseNoise
 				xpn = zeros(size(x));
 				for i = 1:size(xpn, 2)

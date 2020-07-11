@@ -31,10 +31,11 @@ classdef NRUERx < matlab.System
         % Timing offset
         offset;
        
-        % RFFE
+        % LNA
+		satLev;
 		nonLin = false;
 		phaseNoise = false;
-        rffe;
+        lna;
         
 		% ADC
 		adc;
@@ -63,8 +64,9 @@ classdef NRUERx < matlab.System
                 obj.set(varargin{:});
             end                  
             
-            % Create the RFFE
-            obj.rffe = mmwsim.rffe.RFFERx('nonLin', obj.nonLin, 'phaseNoise', obj.phaseNoise);
+            % Create the LNA
+            obj.lna = mmwsim.rffe.LNA('nonLin', obj.nonLin, ...
+				'phaseNoise', obj.phaseNoise, 'satLev', obj.satLev);
             
             % Create the ADC
             obj.adc = mmwsim.rffe.ADC('nbits', obj.nbitsADC, 'isComplex', true, ...
@@ -95,7 +97,7 @@ classdef NRUERx < matlab.System
         function stepImpl(obj, y)
             
 			% Pass the data from the RFFE
-			y = obj.rffe.step(y);
+			y = obj.lna.step(y);
 
 			% Pass the data from the ADC
 			y = obj.adc.step(y);
