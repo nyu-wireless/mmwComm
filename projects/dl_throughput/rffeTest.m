@@ -27,7 +27,7 @@ simParam = PDSCHSimParam('fc', fc);
 if hpc
 	aID = getenv('SLURM_ARRAY_TASK_ID');
 	if isempty(aID)
-		aID = '1';
+		aID = '66';
 	end
 	rng(str2double(aID),'twister');
 else
@@ -188,8 +188,8 @@ EyAvg = mean(EyAvg);
 % for each number of bitsrx
 if hpc
 	ADCtest = [4,6,0]';
-	SNRtest = (-10:0.5:30)';
-	nit = 10;
+	SNRtest = (-10:1:30)';
+	nit = 100;
 else
 	ADCtest = [4,6,0]';
 	SNRtest = (-10:2:30)';
@@ -268,7 +268,11 @@ snrTheory = SNRtest + bwGain + 10*log10(nantrx);
 %% Plot the results
 if hpc
 	% Save the workspace instead of ploting
-	save(strcat('workspace','_',num2str(aID),'.mat'))
+	if singPath
+		save(sprintf('workspace_%s_%dGHz_%d_sp.mat', aID, fc*1e-9, ncc));
+	else
+		save(sprintf('workspace_%d_%dGHz_%d_mp.mat', aID, fc*1e-9, ncc));
+	end
 else
 	% Create legend strings
 	nplot = numsat + 1;
