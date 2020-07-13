@@ -10,19 +10,18 @@ addpath('../..');
 
 %% Parameters
 % We will use the following parameters
-fc = 28e9;          % carrier frequency in Hz
-nantUE = [4,4];     % array size at the UE (mobile device)
-nantgNB = [8,8];    % array size at the gNB (base station)
-ueVel = [5 0 0];    % UE velocity vector in m/s
-ncc = 1;            % number of component carriers (1 or 4)
-singPath = true;	% Use only the strongest path
-phaseNoise = false;  % Include the phase noise of the RFFE
-nonLin = true;		% Include the non-linearity of the RFFE
-hpc = true;		% Run larger experiments using the NYU HPC 
+fc = 140e9;			% carrier frequency in Hz
+nantUE = [4,4];		% array size at the UE (mobile device)
+nantgNB = [8,8];	% array size at the gNB (base station)
+ueVel = [5 0 0];	% UE velocity vector in m/s
+ncc = 1;			% single or multiple component carrier
+singPath = true;	% use only the strongest path
+phaseNoise = false;	% include the phase noise of the RFFE
+nonLin = true;		% include the non-linearity of the RFFE
+hpc = false;		% run larger experiments using the NYU HPC 
 
 % Parameters describing the PDSCH  
-simParam = PDSCHSimParam('fc', fc);
-
+simParam = PDSCHSimParam('fc', fc, 'ncc', ncc);
 %% NYU HPC
 if hpc
 	aID = getenv('SLURM_ARRAY_TASK_ID');

@@ -70,11 +70,13 @@ classdef NRUERx < matlab.System
             
             % Create the ADC
             obj.adc = mmwsim.rffe.ADC('nbits', obj.nbitsADC, 'isComplex', true, ...
-                'inputVar', obj.adcInputVar, 'phaseDither', obj.phaseDither);
+			'inputVar', obj.adcInputVar, 'phaseDither', obj.phaseDither, ...
+			'fsamp', obj.waveformConfig.SamplingRate);
 						
             % Create the PHY
             obj.phy = mmwsim.phy.PhyRx('nbitsADC', obj.nbitsADC, 'ncc', obj.ncc, ...
-				'carrierConfig', simParam.carrierConfig);
+				'carrierConfig', simParam.carrierConfig, ...
+				'fsamp', obj.waveformConfig.SamplingRate);
         end
     end
     methods (Access = protected)
@@ -86,11 +88,15 @@ classdef NRUERx < matlab.System
             
             % Need to add here an automatic way to calculate the center
             % frequency for each component carrier.
+			
             if obj.ncc == 4
                 obj.ccFreq = [-150e6, -50e6, 50e6, 150e6];
+            elseif obj.ncc == 8
+                obj.ccFreq = [-700e6, -500e6, -300e6, -100e6, ...
+								100e6, 300e6, 500e6, 700e6];
             else
                 obj.ccFreq = 0;
-            end
+			end
             obj.phy.set('ccFreq', -obj.ccFreq);
         end
         

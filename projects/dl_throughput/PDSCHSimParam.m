@@ -20,6 +20,9 @@ classdef PDSCHSimParam < matlab.mixin.SetGet
 
 		% ADC resolution
 		nbadc = 0;
+		
+		% Carrier Aggregation
+		ncc;
     end
     
     methods
@@ -27,10 +30,14 @@ classdef PDSCHSimParam < matlab.mixin.SetGet
             % Constructor
             
             % Set parameters from constructor arguments
-            if nargin >= 1
-                obj.set(varargin{:});
-            end
-            
+			if nargin >= 1
+				obj.set(varargin{:});
+			end
+
+			if obj.fc == 140e9
+				obj.SubcarrierSpacing = 240;
+			end
+			
             % Set the carrierParam settings
             obj.carrierConfig = mmwsim.nr.CarrierConfig(...
                 'NRB', obj.NRB, 'SubcarrierSpacing', obj.SubcarrierSpacing, ...
@@ -40,7 +47,8 @@ classdef PDSCHSimParam < matlab.mixin.SetGet
             % We need to convert the carrier configuration to a structure
             carrierStruct = mmwsim.nr.objtostruct( obj.carrierConfig );
             obj.waveformConfig = mmwsim.nr.hOFDMInfo(carrierStruct);
-                                   
+			obj.waveformConfig.SamplingRate = obj.ncc * obj.waveformConfig.SamplingRate;
+			
             % PDSCH parameters.  We allocate all the RBs and all 
             % the OFDM symbols in the slot
             res.Symbols = 0;  % Reserve first symbol

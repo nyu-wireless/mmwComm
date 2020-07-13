@@ -25,6 +25,7 @@ classdef NRgNBTx < matlab.System
         txBF;
         
         % Carrier aggregation
+		singCarr;
         ncc = 1;
 		ccFreq;
         
@@ -46,32 +47,33 @@ classdef NRgNBTx < matlab.System
         % Indices for ofdmGridChan indicating the type of symbol
         
         
-    end
+	end
     
-    methods
-        function obj = NRgNBTx(simParam, varargin)
-            % Constructor
-           
-            % Get parameters from simulation parameters
-            % Many 5G Toolbox routines do not take classes, the 
-            % objects need to be converted to older structures.
-            obj.carrierConfig = mmwsim.nr.objtostruct( simParam.carrierConfig );
-            obj.pdschConfig = mmwsim.nr.objtostruct( simParam.pdschConfig );
-            obj.waveformConfig = mmwsim.nr.objtostruct( simParam.waveformConfig );
-                                    
-            % Set parameters from constructor arguments
-            if nargin >= 1
-                obj.set(varargin{:});
-            end
-                        
-            % Create the RFFE
-            obj.rffe = mmwsim.rffe.RFFETx('nonLin', obj.nonLin, 'phaseNoise', obj.phaseNoise);
-            
-            % Create the ADC
-            obj.dac = mmwsim.rffe.DAC('nbits', obj.nbitsDAC, 'isComplex', true, ...
-                'inputVar', obj.dacInputVar, 'phaseDither', obj.phaseDither);
-        end
-    end
+	methods
+		function obj = NRgNBTx(simParam, varargin)
+			% Constructor
+
+			% Get parameters from simulation parameters
+			% Many 5G Toolbox routines do not take classes, the 
+			% objects need to be converted to older structures.
+			obj.carrierConfig = mmwsim.nr.objtostruct( simParam.carrierConfig );
+			obj.pdschConfig = mmwsim.nr.objtostruct( simParam.pdschConfig );
+			obj.waveformConfig = mmwsim.nr.objtostruct( simParam.waveformConfig );
+
+			% Set parameters from constructor arguments
+			if nargin >= 1
+				obj.set(varargin{:});
+			end
+			
+			% Create the RFFE
+			obj.rffe = mmwsim.rffe.RFFETx('nonLin', obj.nonLin, 'phaseNoise', obj.phaseNoise);
+
+			% Create the ADC
+			obj.dac = mmwsim.rffe.DAC('nbits', obj.nbitsDAC, 'isComplex', true, ...
+			'inputVar', obj.dacInputVar, 'phaseDither', obj.phaseDither, ...
+			'fsamp', obj.waveformConfig.SamplingRate);
+		end
+	end
     methods (Access = protected)
     
         function setupImpl(obj)
@@ -79,6 +81,9 @@ classdef NRgNBTx < matlab.System
             % frequency for each component carrier.
             if obj.ncc == 4
                 obj.ccFreq = [-150e6, -50e6, 50e6, 150e6];
+            elseif obj.ncc == 8
+                obj.ccFreq = [-700e6, -500e6, -300e6, -100e6, ...
+								100e6, 300e6, 500e6, 700e6];
             else
                 obj.ccFreq = 0;
             end
@@ -151,6 +156,7 @@ classdef NRgNBTx < matlab.System
                 
                 % Add the 
 				x(:,:,cc) = xnco;
+				tmp = sum(x, 3);
             end
             x = sum(x, 3);
             % Increment the slot number
