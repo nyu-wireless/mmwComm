@@ -20,7 +20,9 @@ classdef PhyRx < matlab.System
         % Carrier aggregation
         ncc = 1;
 		ccFreq;
-		fsamp = 491.52e6;	% sample frequency
+		
+		% ADC
+		fsamp;
 	end
 	
 	methods

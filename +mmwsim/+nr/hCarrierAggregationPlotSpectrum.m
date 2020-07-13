@@ -14,7 +14,7 @@ specPlot.SampleRate = SR;
 specPlot.FrequencyResolutionMethod = 'WindowLength';
 % FFT length expressed as a property in FFTLength
 specPlot.FFTLengthSource = 'Property';
-fftLength = (SR/30.72e6*2048);
+fftLength = (SR/30.72e6*1024);
 specPlot.FFTLength = fftLength;
 % calculate number of spectral averages in spectrum
 numSpectralAverages = fix(size(waveform, 1)/fftLength);
