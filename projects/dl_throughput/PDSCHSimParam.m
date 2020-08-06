@@ -22,6 +22,7 @@ classdef PDSCHSimParam < matlab.mixin.SetGet
 		nbadc = 0;
 		
 		% Carrier Aggregation
+		singCC;
 		ncc;
     end
     
@@ -47,6 +48,15 @@ classdef PDSCHSimParam < matlab.mixin.SetGet
             % We need to convert the carrier configuration to a structure
             carrierStruct = mmwsim.nr.objtostruct( obj.carrierConfig );
             obj.waveformConfig = mmwsim.nr.hOFDMInfo(carrierStruct);
+			
+			if obj.singCC
+				obj.ncc = 1;
+			elseif obj.fc == 140e9
+				obj.ncc = 8;
+			elseif obj.fc == 28e9
+				obj.ncc = 4;
+			end				
+			
 			obj.waveformConfig.SamplingRate = obj.ncc * obj.waveformConfig.SamplingRate;
 			
             % PDSCH parameters.  We allocate all the RBs and all 

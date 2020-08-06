@@ -31,12 +31,21 @@ classdef NRUERx < matlab.System
         % Timing offset
         offset;
        
-        % LNA
-		satLev;
 		nonLin = false;
 		phaseNoise = false;
+		
+        % LNA
+		lnaSat;
+		lnaNoiseFig;	% Noise figure
+		lnaGain;		% Mixer gain
         lna;
-        
+		
+        % Mixer parameters
+		mixSat;			% Saturation level
+		mixNoiseFig;	% Noise figure
+		mixGain;		% Mixer gain
+		mix;
+		
 		% ADC
 		adc;
         
@@ -62,15 +71,24 @@ classdef NRUERx < matlab.System
             % Set parameters from constructor arguments
             if nargin >= 1
                 obj.set(varargin{:});
-            end                  
+			end                  
             
+		
             % Create the LNA
-            obj.lna = mmwsim.rffe.LNA('nonLin', obj.nonLin, ...
-				'phaseNoise', obj.phaseNoise, 'satLev', obj.satLev);
+			obj.lna = mmwsim.rffe.LNA('nonLin', obj.nonLin, ...
+				'satLev', obj.lnaSat, ...
+				'fsamp', obj.waveformConfig.SamplingRate, ...
+				'noiseFig', obj.lnaNoiseFig, 'linGain', obj.lnaGain);
+			
+            % Create the Mixer
+			obj.mix = mmwsim.rffe.Mixer('nonLin', obj.nonLin, ...
+				'satLev', obj.mixSat, ...
+				'fsamp', obj.waveformConfig.SamplingRate, ...
+				'noiseFig', obj.mixNoiseFig, 'linGain', obj.mixGain);
             
             % Create the ADC
             obj.adc = mmwsim.rffe.ADC('nbits', obj.nbitsADC, 'isComplex', true, ...
-			'inputVar', obj.adcInputVar, 'phaseDither', obj.phaseDither, ...
+			'inputVar', obj.adcInputVar, 'dither', obj.phaseDither, ...
 			'fsamp', obj.waveformConfig.SamplingRate);
 						
             % Create the PHY
@@ -102,8 +120,11 @@ classdef NRUERx < matlab.System
         
         function stepImpl(obj, y)
             
-			% Pass the data from the RFFE
+			% Pass the data from the LNA
 			y = obj.lna.step(y);
+			
+			% Pass the data from the Mixer
+			y = obj.mix.step(y);
 
 			% Pass the data from the ADC
 			y = obj.adc.step(y);

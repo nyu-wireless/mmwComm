@@ -1,9 +1,9 @@
-classdef LNA < matlab.System
+classdef Mixer < matlab.System
 	properties
 		nonLinModel;	% non-linear model for the lna
-		linGain = 1;	% linear gain of the lna in dB
-		satLev = 10;	% limit the output signal level of the lna
-		method = 'Rapp model';
+		linGain = 1;	% Linear gain of the lna in dB
+		satLev = 10;     % Limit the output signal level of the lna
+		method = 'Rapp model';	%
 		smooth =  1.55;	% p parameter		
 		nonLin = true;
 		phaseNoise;
@@ -13,7 +13,7 @@ classdef LNA < matlab.System
 	end
 	
 	methods
-		function obj = LNA(varargin)
+		function obj = Mixer(varargin)
             % Constructor
 			
             % Set key-value pair arguments
@@ -47,4 +47,3 @@ classdef LNA < matlab.System
 		end
 	end			
 end
-

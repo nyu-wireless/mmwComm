@@ -100,7 +100,7 @@ classdef DAC < matlab.System
             end
 
             % Measure MSE on possible test quantizer levels
-            aqtest = linspace(0.1, 2, 500)'*2^(obj.nbits-1);
+            aqtest = linspace(0.1, 4, 1000)'*2^(obj.nbits-1);
             naq  = length(aqtest);
             mse = zeros(naq,1);
 

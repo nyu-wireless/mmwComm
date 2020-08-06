@@ -14,19 +14,20 @@ fc = 140e9;			% carrier frequency in Hz
 nantUE = [4,4];		% array size at the UE (mobile device)
 nantgNB = [8,8];	% array size at the gNB (base station)
 ueVel = [5 0 0];	% UE velocity vector in m/s
-ncc = 1;			% single or multiple component carrier
+singCC = true;		% single or multiple component carrier
 singPath = true;	% use only the strongest path
 phaseNoise = false;	% include the phase noise of the RFFE
 nonLin = true;		% include the non-linearity of the RFFE
 hpc = false;		% run larger experiments using the NYU HPC 
 
 % Parameters describing the PDSCH  
-simParam = PDSCHSimParam('fc', fc, 'ncc', ncc);
+simParam = PDSCHSimParam('fc', fc, 'singCC', singCC);
+ncc = simParam.ncc;
 %% NYU HPC
 if hpc
 	aID = getenv('SLURM_ARRAY_TASK_ID');
 	if isempty(aID)
-		aID = '66';
+		aID = '1';
 	end
 	rng(str2double(aID),'twister');
 else
@@ -132,17 +133,20 @@ gainDir = gain + AFgNB + AFUE + elemGainTx + elemGainRx;
 % To set the noise power and ADC quantization levels, we run a large number
 % of slots
 
-if hpc
-	ncal = 100;
-else
-	ncal = 10;
-end
+ncal = 100;
 
-% Saturation levels of the lna to test
-satLevTest = linspace(0, 20, 5);
+% Mixer parameters
+mixSatTest = 20;	% Saturation level
+mixNoiseFig = 10;	% Noise figure
+mixGain = 1;		% Mixer gain
+
+% LNA parameters
+lnaSatTest = linspace(5, 20, 4);	% Saturation level
+lnaNoiseFig = 22;					% Noise figure
+lnaGain = 1;						% Mixer gain
+numsat = length(lnaSatTest);
 
 EyAvg = zeros(ncal, 1);
-numsat = length(satLevTest);
 
 if ~hpc
 	f = waitbar(0,'Calibrating');
@@ -164,10 +168,24 @@ for i = 1:ncal
     y = chan.step(x);
     	
 	for isat=1:numsat
-		vsat = sqrt(mean(abs(y).^2, 'all')*10.^(0.1*satLevTest(isat)));
-		lna = mmwsim.rffe.LNA('nonLin', nonLin, 'satLev', vsat);
-		ymix = lna.step(y);
-		
+		% Get the LNA saturation level
+		vsat = sqrt(mean(abs(y).^2, 'all')*10.^(0.1*mixSatTest));
+
+		% LNA
+		lna = mmwsim.rffe.LNA('nonLin', nonLin, 'satLev', vsat, ...
+			'fsamp', tx.waveformConfig.SamplingRate, ...,
+			'noiseFig', lnaNoiseFig, 'linGain', lnaGain);
+		ylna = lna.step(y);
+
+		% Get the mixer saturation level
+		vsat = sqrt(mean(abs(y).^2, 'all')*10.^(0.1*mixSatTest));
+			
+		% Mixer
+		mixer = mmwsim.rffe.Mixer('nonLin', nonLin, 'satLev', vsat, ...
+			'fsamp', tx.waveformConfig.SamplingRate, ...,
+			'noiseFig', mixNoiseFig, 'linGain', mixGain);
+		ymix = mixer.step(ylna);
+			
 		% Measure average power
 		EyAvg(i, isat) = mean(abs(ymix).^2, 'all');    
 	end
@@ -192,11 +210,10 @@ if hpc
 else
 	ADCtest = [4,6,0]';
 	SNRtest = (-10:2:30)';
-	nit = 10;
+	nit = 25;
 end
-satLevTest = linspace(0, 20, 5);
 
-numsat = length(satLevTest);
+numsat = length(lnaSatTest);
 numnbadc = length(ADCtest);
 numsnr = length(SNRtest);
 snrEq = zeros(numsnr, numsat, numnbadc, nit);
@@ -228,7 +245,8 @@ for isnr = 1:numsnr
 
 			for iadc = 1:numnbadc
 				% Get the Saturation Level of the lna
-				vsat = sqrt(mean(abs(y).^2, 'all')*10.^(0.1*satLevTest(isat)));
+				lnaSat = sqrt(mean(abs(y).^2, 'all')*10.^(0.1*lnaSatTest(isat)));
+				mixSat = sqrt(mean(abs(y).^2, 'all')*10.^(0.1*mixSatTest));
 				
 				% Get number of ADC bits
 				nbadc = ADCtest(iadc);
@@ -237,7 +255,11 @@ for isnr = 1:numsnr
 				rxInputVar = EyAvg(isat) + Enoise;
 				rx = NRUERx(simParam, 'rxBF', wrx, 'nbitsADC', nbadc, ...
 					'adcInputVar', rxInputVar, 'ncc', ncc, 'nonLin', nonLin, ...
-					'phaseNoise', phaseNoise, 'satLev', vsat);
+					'phaseNoise', phaseNoise, 'lnaSat', lnaSat, ...
+					'lnaGain', lnaGain, 'lnaNoiseFig', lnaNoiseFig, ...
+					'mixGain', mixGain, 'mixNoiseFig', mixNoiseFig, ...
+					'mixSat', mixSat);
+				
 				rx.step(ynoisy);
 
 				% Measure the post equalization SNR
@@ -253,7 +275,7 @@ for isnr = 1:numsnr
 		for isat = 1:numsat
 			for iadc = 1:numnbadc
 				fprintf(1,'snr=%7.2f satLev=%7.2f nb=%d snrEq = %7.2f\n', ...
-					snrAnt, satLevTest(isat), ADCtest(iadc), mean(snrEq(isnr,isat,iadc,:)));
+					snrAnt, lnaSatTest(isat), ADCtest(iadc), mean(snrEq(isnr,isat,iadc,:)));
 			end
 		end
 	end
@@ -265,19 +287,21 @@ bwGain = 10*log10(tx.waveformConfig.Nfft/tx.waveformConfig.NSubcarriers);
 snrTheory = SNRtest + bwGain + 10*log10(nantrx);
 
 %% Plot the results
+hpc = false;
+aID = 1;
 if hpc
 	% Save the workspace instead of ploting
 	if singPath
 		save(sprintf('workspace_%s_%dGHz_%d_sp.mat', aID, fc*1e-9, ncc));
 	else
-		save(sprintf('workspace_%d_%dGHz_%d_mp.mat', aID, fc*1e-9, ncc));
+		save(sprintf('workspace_%s_%dGHz_%d_mp.mat', aID, fc*1e-9, ncc));
 	end
 else
 	% Create legend strings
 	nplot = numsat + 1;
 	legstr = cell(nplot,1);
 	for i = 1:numsat
-		satLev = satLevTest(i);
+		satLev = lnaSatTest(i);
 		legstr{i} = sprintf('satLev=%7.2f', satLev);
 	end
 	legstr{nplot} = 'Theory';
@@ -300,6 +324,8 @@ else
 		else
 			titlestr = sprintf('nbadc = %d | ncc = %d', nb, ncc);
 		end
+		
+		titlestr = sprintf('%s | fc = %d GHz', titlestr, fc*1e-9);
 		
 		if singPath
 			titlestr = sprintf('%s | Single Path', titlestr);
