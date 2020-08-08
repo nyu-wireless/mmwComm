@@ -27,6 +27,9 @@ classdef ArrayPlatform < matlab.System
         
         % Velocity vector in 3D in m/s
         vel = zeros(1,3);
+        
+        % Position in m
+        pos = zeros(1,3);
     end
     
     methods
@@ -81,6 +84,17 @@ classdef ArrayPlatform < matlab.System
             
         end
         
+        function elemPosGlob = getElementPos(obj)
+            % Gets the array elements in the global reference frame
+           
+            % Get the element position in the local reference frame
+            elemPosLoc = obj.arr.getElementPosition();
+            
+            % Convert to the global reference frame
+            elemPosGlob = local2globalcoord(elemPosLoc, 'rr', ...
+                zeros(3,1), obj.axesLoc) + reshape(obj.pos,3,1);
+        end
+        
        
     end
     
@@ -99,15 +113,23 @@ classdef ArrayPlatform < matlab.System
             obj.sv.release();
         end
         
-       function [u, elemGain] = stepImpl(obj, az, el)
+       function [u, elemGain] = stepImpl(obj, az, el, relSV)
             % Gets steering vectors and element gains for a set of angles
             % The angles az and el should be row vectors along which
             % the outputs are to be computed.  
+            % If the relSV == true, then the steering vector object is
+            % released.  This is needed in case the dimensions of the past
+            % call are the different from the past one
             
             % Release the SV
-            obj.releaseSV();
+            if nargin < 4
+                relSV = false;
+            end
+            if relSV
+                obj.releaseSV();
+            end
             
-            % TODO:  Convert the global angles (az, el) to local
+            % Convert the global angles (az, el) to local
             % angles (azLoc, elLoc).  Use the 
             % global2localcoord() method with the 'ss' option.
             uglobal = [az; el; ones(1,length(az))];
