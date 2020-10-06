@@ -11,6 +11,9 @@ classdef LOSMIMOChan < matlab.System
         % from Friis' law and the element gains
         gainFix = [];  % Fixed gain
         
+		fracDly;
+		gain = 0;
+		
         % Latest channel parameters
         chanMatrix;  % Narrowband channel matrix
         dly;         % Delay in seconds
@@ -18,8 +21,7 @@ classdef LOSMIMOChan < matlab.System
         aodAz, aodEl, aoaAz, aoaEl;  % Angles of arrival and departure
         pathLoss;  % free space omni path loss in dB
         distCen;   % distance between array centers in m
-        utx, urx;  % Spatial signatures (these are not needed)
-                                
+        utx, urx;  % Spatial signatures (these are not needed)                       
     end
     
     methods 
@@ -101,7 +103,7 @@ classdef LOSMIMOChan < matlab.System
                 gainLin = 10.^(0.05*obj.gainFix);
                 obj.dly = 0;
             end
-            
+			
             % Compute the channel matrix
             obj.chanMatrix = gainLin*exp(1i*phase);
                         

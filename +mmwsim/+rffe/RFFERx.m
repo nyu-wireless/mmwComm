@@ -1,18 +1,31 @@
 classdef RFFERx < matlab.System
     % RFFERx.  Class containing the Receive RF front-end.
 	properties
-		nonLin = false;
-		phaseNoise = false;
+		isLinear = false;	% include the rffe non-linearities
 		
-		% LNA parameters
-        lna;
-        lnaMethod = 'Rapp model';     
-        lnaSmooth = 1.55;	% p parameter
-        lnaLinGain = 1;	% Linear gain of the LNA in dB
-        lnaSat = 10;     % Limit the output signal level of the LNA
-        
-        % Mixer parameters
-        pnoise;
+		% Simulation parameters
+		nrx = 16;			% number of RX antennas
+		noiseTemp = 290;	% noise temperature in K
+		ktVar = 1.0;		% thermal noise per sample
+		EkT;				% thermal noise energy
+		xvar = 1;			% variance of the tx symbols
+			
+		lnaGain = 24;		% LNA gain in dB
+		lnaNF = 12.7735;	% LNA noise figure in dB
+		lnaAmpLut;			% LNA fund tone power curve
+		lnaPower;			% LNA power in mW
+		
+		mixGain = 1;		% mixer gain in dB
+		mixNF = 30;			% mixer noise figure in dB
+		mixAmpLut;			% mixer fund tone power curve
+		mixPLO;				% local oscillator power
+		mixPower;			% mixer power in mW
+		
+		nbits = 4;			% ADC bits per dimension
+		adcFOM = 65e-12;	% FOM of the ADC 65 fJ/conv
+		fsamp = 1e9;		% sample rate
+		
+		elem;				% rffe elements
 	end
 	
 	methods
@@ -23,84 +36,134 @@ classdef RFFERx < matlab.System
 			if nargin >= 1
 				obj.set(varargin{:});
 			end
+			
+			obj.EkT = physconst('Boltzman')*obj.noiseTemp;
+		end
+		
+		function NF = nf(obj)
+			% Calculate the effective noise figure
+			NF = 10*log10(10^(0.1*obj.lnaNF) + 10^(-0.1*obj.lnaGain)*(10^(0.1*obj.mixNF)-1));
+		end
+		
+		function P = power(obj)
+			% Calculate the power consumption in mW
+			if obj.nbits == 0
+				% For inf-bit ADCs use 12-bit for power calculation.
+				nb = 12;
+			else
+				nb = obj.nbits;
+			end
+			
+			ndriverTest = 2.^(0:log2(obj.nrx));	% number of LO drivers
+			ndriver = length(ndriverTest);
+			
+			% Initialize the power consumption vector.
+			P = zeros(ndriver, 1);
+			
+			% In a fully-digital receiver we have an LNA and a Mixer per
+			% antenna.
+			P = P + obj.nrx*obj.lnaPower;
+			P = P + obj.nrx*obj.mixPower;
+			
+			% Find the LO power for each configuration
+			L3dB = 0.5;					% loss in dB
+			etaOpt = 0.25;				% maximum power-added efficiency (PAE)
+			Popt = 10^(0.1*10);			% maximum output power in mW
+			Pin = 10^(0.1*(-5));		% input power of the LO signal to the power divider in mW
+			Pmul = 48;					% power consumption of the LO generation network in mW
+			PLO = 10^(0.1*obj.mixPLO);	% power required at the input of each mixer in mW
+			
+			loPower = zeros(ndriver,1);
+			
+			for idriver = 1:ndriver
+				Nd = ndriverTest(idriver);
+				Pout = PLO*(obj.nrx/Nd)*10^(0.1*L3dB*log2(obj.nrx/Nd));
+				Pamp = max(0, Pout - Pin);
+				if Pamp > 0
+					eta = etaOpt*2/((Pamp/Popt)+(Popt/Pamp));
+					Pdriver = Pamp/eta;
+				else
+					Pdriver = 0;
+				end
+				loPower(idriver) = Nd*(Pdriver+Pmul);
+			end
+			P = P + loPower;
+			
+			% ADC Power
+			P = P + obj.nrx*2*obj.fsamp*(2^nb)*obj.adcFOM;
 		end
 	end
 		
     methods (Access = protected)
         function setupImpl(obj)
-			% Apply phase noise to waveform
-			fc = 28e9;
-			sr = 491.52e6;
-			foffsetLog = (4.5:0.1:log10(sr/2));
-			foffset = 10.^foffsetLog;
-			PN_dBc_Hz = obj.PNmodelPoleZero(foffset,fc);
-			obj.pnoise = comm.PhaseNoise('FrequencyOffset',foffset,'Level', PN_dBc_Hz,'SampleRate',sr);			
 			
-            % Create and configure a memoryless nonlinearity to model the 
-            % amplifier
-            obj.lna = comm.MemorylessNonlinearity;
-            obj.lna.Method = obj.lnaMethod;
-            obj.lna.Smoothness = obj.lnaSmooth;    
-            obj.lna.LinearGain = obj.lnaLinGain;
-            obj.lna.OutputSaturationLevel = obj.lnaSat;
+			% Thermal noise at the antenna.
+			% Note:  Due to the convention in the ThermalNoise object in 
+			% MATLAB, you must set SampleRate=1 to get the correct noise 
+			% energy per sample of kT.
+			tn0 = comm.ThermalNoise('SampleRate', 1, 'NoiseTemperature', ...
+				obj.noiseTemp);
+			tn = MultiInput(tn0, obj.nrx);
+				
+			% LNA thermal noise
+			lnaNoise0 = comm.ThermalNoise('NoiseMethod', 'Noise figure', ...
+				'NoiseFigure', obj.lnaNF, 'SampleRate', 1);
+			lnaNoise = MultiInput(lnaNoise0, obj.nrx);
 			
-			% plotNonLinearCharacteristic(obj.lna);
+			% LNA gain and nonlinearity
+			lnaAmp0 = comm.MemorylessNonlinearity('Method', 'Lookup table', ...
+				'Table', obj.lnaAmpLut);
+			lnaAmp = MultiInput(lnaAmp0, obj.nrx);
+
+			% Mixer thermal noise
+			mixNoise0 = comm.ThermalNoise('NoiseMethod', 'Noise figure', ...
+				'NoiseFigure', obj.mixNF, 'SampleRate', 1);
+			mixNoise = MultiInput(mixNoise0, obj.nrx);
+			
+			% Mixer gain and nonlinearity
+			mixAmp0 = comm.MemorylessNonlinearity('Method', 'Lookup table', ...
+				'Table', obj.mixAmpLut);
+			mixAmp = MultiInput(mixAmp0, obj.nrx);
+
+			% Baseband AGC used to adjust the input level to the ADC-
+			% This would be performed via a controllable baseband amplifier
+			bbAGC = mmwsim.rffe.AutoScale('meth', 'MatchTgt');
+						
+			% ADC
+			adc = mmwsim.rffe.ADC('nbits', obj.nbits);
+			
+			% Find optimal input target for the ADC
+			% Full scale value
+			adcFS = max(adc.stepSize*(2^(obj.nbits-1)-1), 1);
+			EsFS = 2*adcFS^2;
+
+			% Test the values at some backoff from full scale
+			bkfTest = linspace(-30,0,100)';
+			EsTest = EsFS*10.^(0.1*bkfTest);
+
+			% Compute the SNR 
+			snr = bbAGC.compSnrEs(EsTest, adc);
+
+			% Select the input level with the maximum SNR
+			[~, im] = max(snr);
+			bbAGC.set('EsTgt', EsTest(im));
+
+			obj.elem = {tn, lnaNoise, lnaAmp, mixNoise, mixAmp, bbAGC, adc};
 		end
 		
-        function y = stepImpl(obj, x)
+        function y = stepImpl(obj, x)	
+			% Find the number of RFFE elements
+			nstage = length(obj.elem);
 			
-			if obj.phaseNoise
-				xpn = zeros(size(x));
-				for i = 1:size(xpn, 2)
-					xpn(:, i) = obj.pnoise(x(:, i));
+			if ~obj.isLinear
+				% Apply memory-less non linearity 
+				for i = 1:nstage-1
+					x = obj.elem{i}.step(x);
 				end
-			else
-				xpn = x;
 			end
 			
-			% Apply memory-less non linearity
-			if obj.nonLin
-				y = zeros(size(xpn));
-				for i = 1:size(xpn, 2)
-					y(:, i) = obj.lna(xpn(:, i));
-				end
-			else
-				y = xpn;
-			end
-		end
-		
-		function PN_dBC_Hz = PNmodelPoleZero(obj, f,fc)
-			% Generate the phase noise characteristic in dBc/Hz for the frequency
-			% offset values specified by vector f for the carrier frequency fc.
-			%
-			% The model used here is the multi-pole/zero model as proposed in:
-			% Yinan Qi et al. "On the Phase Tracking Reference Signal (PT-RS) Design
-			% for 5G New Radio (NR)". Vehicular Technology Conference (VTC-Fall), Aug
-			% 2018.
-
-			% Pole/zeros and PSD0 as specified in the paper mentioned above and in 3GPP
-			% R1-163984, "Discussion on phase noise modeling". This corresponds to
-			% "parameter set A" for a base frequency of 30GHz.
-			fcBase = 30e9;
-			fz= [1.8 2.2 40]*1e6;
-			fp = [0.1 0.2 8]*1e6;
-			PSD0 = -79.4;
-
-			% Compute numerator
-			num = ones(size(f));
-			for ii=1:numel(fz)
-				num = num.* ( 1 +(f./fz(ii)).^2);
-			end
-
-			% Compute denominator
-			den = ones(size(f));
-			for ii=1:numel(fz)
-				den = den.* ( 1 +(f./fp(ii)).^2);
-			end
-
-			% Compute phase noise and apply a shift for carrier frequencies different
-			% from the base frequency.
-			PN_dBC_Hz = 10*log10(num./den) + PSD0 + 20*log10(fc/fcBase);
+			% The last stage of the RFFE is the ADC
+			y = obj.elem{nstage}.step(x);
 		end
 	end
 end

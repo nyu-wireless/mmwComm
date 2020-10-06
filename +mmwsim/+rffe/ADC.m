@@ -14,34 +14,32 @@ classdef ADC < matlab.System
         outputType = "int";
 
         
-		isComplex = true;	% complex input
-		stepSize = 1.0;		% step size
-		dither = true;		% enable dithering
-
+        isComplex = true;    % complex input
+        stepSize = 1.0;          % step size
+        dither = false;      % enable dithering
+                
 		% ADC scaling parameters
 		nscal = 10000;       % number of samples used for calibration
-
-		% Parameters for linear model:
-		%    Q(x) = linGain*x + N(0,quantVar),   x~N(0,inputVar)
+        
+        % Parameters for linear model:
+        %    Q(x) = linGain*x + N(0,quantVar),   x~N(0,inputVar)
 		inputVar = 1;       % input variance        
-		linGain = 1;    
-		quantVar = 1;
-		quantVar1 = 1;
-		mseOpt = 0;         % Optimal MSE in dB
-		
-		fsamp;				% ADC sampling frequency
+        linGain = 1;    
+        quantVar = 1;
+        quantVar1 = 1;
+        mseOpt = 0;         % Optimal MSE in dB
 	end
     
     % Quantizer methods.  All methods are static
-	methods 
-
-		function obj = ADC(varargin)
-			% Constructor
-			% Set parameters from constructor arguments
-			if nargin >= 1
-				obj.set(varargin{:});
-			end      
-		end
+    methods 
+        
+        function obj = ADC(varargin)
+            % Constructor
+            % Set parameters from constructor arguments
+            if nargin >= 1
+                obj.set(varargin{:});
+            end      
+        end
         
         % Performs the quantization providing integer and floating
         % point values
@@ -131,7 +129,7 @@ classdef ADC < matlab.System
             end
             
             % Measure MSE on possible test quantizer levels
-            stepTest = linspace(0, 4, 1000)'*xstd/2^(obj.nbits-1);
+            stepTest = linspace(0, 4, 500)'*xstd/2^(obj.nbits-1);
             ns  = length(stepTest);
             mse = zeros(ns,1);
             for i = 1:ns
