@@ -3,23 +3,31 @@ classdef ADC < matlab.System
     
     properties	
         % number of bits, 0 indicates no quantization
-        nbits = 6;
-        isComplex = true;    % complex input                 
-        phaseDither = false; % Enable phase dithering
+        nbits = 6;    
+
+        % Output type:
+        % "int":  signed int of the form,
+        %     q = 2*k+1, k=-M/2 to M/2-1, M=2^nbits
+        % "float":  floating point output of the form:
+        %     q = stepSize*(k+0.5)
+        % If isComplex, then this representation is used in I and Q
+        outputType = "int";
+
+        
+        isComplex = true;    % complex input
+        stepSize = 1.0;          % step size
+        dither = false;      % enable dithering
                 
-		% ADC scaling
-		aq = 1.0;			% quantizer step
-        nscal = 1000;       % number of samples used for calibration
+		% ADC scaling parameters
+		nscal = 10000;       % number of samples used for calibration
         
         % Parameters for linear model:
         %    Q(x) = linGain*x + N(0,quantVar),   x~N(0,inputVar)
 		inputVar = 1;       % input variance        
         linGain = 1;    
         quantVar = 1;
-        mseOpt = 0;         % optimal MSE in dB
-        qvarSim;
-        
-        fsamp = 491.52e6;   % sample frequency
+        quantVar1 = 1;
+        mseOpt = 0;         % Optimal MSE in dB
 	end
     
     % Quantizer methods.  All methods are static
@@ -33,47 +41,59 @@ classdef ADC < matlab.System
             end      
         end
         
-        % Quantizer with saturation
-        % quantizes input x, with number of bits, nb and scale a.
-        function y = qsat(obj, x0)
-            % Scale the input        
-            x = x0 / sqrt(obj.inputVar);
+        % Performs the quantization providing integer and floating
+        % point values
+        function [qfloat,qint] = qsat(obj, x0)            
             if (obj.nbits == 0)
                 % No quantization
-                y = x;
-            elseif ~obj.isComplex
-                % Perform quantization for real signals
-                y = (max( min(round(obj.aq*x-0.5),2^(obj.nbits-1)-1),-2^(obj.nbits-1))+0.5)/obj.aq;
-            else
-                % If phase dither is enabled, we rotate the input 
-                % by random phases
-                if obj.phaseDither
-                    phase = 2*pi*rand(size(x));
-                    x = x.*exp(1i*phase);
-                end
-                           
-                % Perform for IQ
-                xr = real(x);
-                xi = imag(x);
-                yr = (max( min(round(obj.aq*xr-0.5),2^(obj.nbits-1)-1),-2^(obj.nbits-1))+0.5)/obj.aq;
-                yi = (max( min(round(obj.aq*xi-0.5),2^(obj.nbits-1)-1),-2^(obj.nbits-1))+0.5)/obj.aq;                
-                y = yr + 1i*yi;                
-                
-                % Unwrap the phase dithering
-                if obj.phaseDither
-                    y = y.*exp(-1i*phase);
-                end                               
+                qint = x0;
+                qfloat = x0;
+                return
             end
-                    
+
             
-            % Rescale with input variance
-            y = y * sqrt(obj.inputVar);                                                                                  
-            obj.qvarSim = mean(abs(y-x0).^2,2);
+            % Scale the input
+            x = x0 / obj.stepSize;            
+
+            % Dithering
+            if obj.dither
+                if obj.isComplex
+                    %d = (rand(size(x))-0.5) + 1i*(2*rand(size(x))-0.5);
+                    d = (rand(size(x))) + 1i*(2*rand(size(x)));
+                else
+                    d = rand(size(x))-0.5;
+                end
+                x = x + d;
+            end
+
+            M2 = 2^(obj.nbits-1);
+            if obj.isComplex
+                % Perform quantization for complex signals
+                xr = floor(real(x));
+                xi = floor(imag(x));
+                qr = max(min(xr,M2-1), -M2)+0.5;
+                qi = max(min(xi,M2-1), -M2)+0.5;
+                qint = qr + 1i*qi;                
+            else                          
+                % Perform quantization for complex signals
+                x = floor(real(x));
+                qint = max(min(x,M2-1), -M2)+0.5;
+            end
+            
+            % Scale output to integer or float
+            qint = 2*qint;
+            qfloat = 0.5*obj.stepSize*qint;
+            
+            % Remove dithering
+            if obj.dither
+               qfloat = qfloat - d*obj.stepSize;
+            end
+                
         end
         
         % Sets scaling values from a different ADC
         function copyScale(obj, adc1)
-            obj.aq = adc1.aq;
+            obj.stepSize = adc1.stepSize;
             obj.inputVar = adc1.inputVar;
             obj.quantVar = adc1.quantVar;
             obj.linGain = adc1.linGain;
@@ -90,7 +110,7 @@ classdef ADC < matlab.System
             
             % Handle case with infinite resolution
             if (obj.nbits == 0)
-                obj.aq = 1;
+                obj.stepSize = 1;
                 obj.quantVar = 0;
                 obj.linGain = 1;
                 obj.mseOpt = 0;
@@ -100,29 +120,38 @@ classdef ADC < matlab.System
             % Generate random data points to calibrate
             if obj.isComplex
                 x = randn(1, obj.nscal) + 1i*randn(1,obj.nscal);
-                x = x * sqrt(obj.inputVar/2);
+                xstd = sqrt(obj.inputVar/2);
+                x = x * xstd;
+                
             else
-                x = randn(1, obj.nscal) * sqrt(obj.inputVar);
+                xstd = sqrt(obj.inputVar);
+                x = randn(1, obj.nscal) * xstd;
             end
             
             % Measure MSE on possible test quantizer levels
-            aqtest = linspace(0.1, 2, 500)'*2^(obj.nbits-1);
-            naq  = length(aqtest);
-            mse = zeros(naq,1);
-            for i = 1:naq
-                obj.aq = aqtest(i);
+            stepTest = linspace(0, 4, 500)'*xstd/2^(obj.nbits-1);
+            ns  = length(stepTest);
+            mse = zeros(ns,1);
+            for i = 1:ns
+                obj.stepSize = stepTest(i);
                 mse(i) = mean( abs(x-obj.qsat(x)).^2 );
             end
             
             % Select scaling with minimal distortion
-            [~, im] = min(mse);  
-            obj.aq = aqtest(im);
-            
+            [~, im] = min(mse);   
+            obj.stepSize = stepTest(im);
+
             % Find parameters for a linear AQN model
             %    qsat(x) = linGain*x + N(0, quantVar)                     
-            q = obj.qsat(x);
+            [qf, qi] = obj.qsat(x);
+            if strcmp(obj.outputType, 'int')
+                q = qi;
+            else
+                q = qf;
+            end
             obj.linGain  = real(q*x')/real(x*x');
             obj.quantVar = mean(abs(q - obj.linGain*x).^2 );
+            obj.quantVar1 = mean(abs(q - x).^2 );
             
             % Compute the relative MMSE:
             %    mseOpt = var(x|q)/var(x)
@@ -133,11 +162,15 @@ classdef ADC < matlab.System
     end
     
      methods (Access = protected)
-       
-		
-        function y = stepImpl(obj, x)
+       		
+        function q = stepImpl(obj, x)
             % Step function:  Performs the quantization
-            y = obj.qsat(x);
+            [qf, qi] = obj.qsat(x);
+            if strcmp(obj.outputType, 'int')
+                q = qi;
+            else
+                q = qf;
+            end
         end
      end
 end
