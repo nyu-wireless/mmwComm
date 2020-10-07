@@ -1,4 +1,20 @@
 %% 5G NR downlink PDSCH - Non Linear RFFE
+% This project evaluates a practical mobile receiver at millimeter-wave
+% (mmWave) and terahertz (THz) frequencies. We consider a downlink system
+% with a single NR basestation (gNB), and a single UE device.
+% The simulation contains realistic models of RF front-end (RFFE)
+% components for the receiver. 
+%
+% The gNB can either use the entire wideband bandwidth by performing
+% carrier aggregation, or transmit a single component carrier. The gNB
+% generates for each component carrier a physical downlink shared channel
+% (PDSCH) that includes the information data and some physical layer
+% signals. The demodulation reference signals (DM-RS) and the phase
+% tracking reference signals (PT-RS). The UE uses DM-RS and PT-RS to
+% perform practical channel estimation. For each slot we generate a random
+% angle-of-departure (AoD) and angle-of-arrival (AoA) in both azimuth and
+% elevation angles. For each RFFE configuration we create a UE device that
+% will process the received data at several input power levels.
 
 %% Packages
 % Add the folder containing +mmwsim to the MATLAB path.
@@ -23,7 +39,7 @@ isHPC = false;		% run the simulation at the NYU HPC
 % Input SNR Es/N0 relative to thermal noise
 snrInTest = linspace(-10, 50, 21)';
 
-% ADC resolution (4-bit, 5-bit, 6-bit). For inf-bit use 0
+% ADC resolution (4-bit, 5-bit, 6-bit). For inf-bit use 0.
 adcTest = [4, 5, 6];
 
 % Define a uniform random function in [a,b]
@@ -31,7 +47,7 @@ rnd = @ (a,b) (a + (b-a)*rand(1,1));
 
 % Load the RFFE models
 if fc == 140e9
-	load('rffe_140GHz.mat');
+	load('rffe140GHz.mat');
 	isLinear = false;	% 'false' to include the distortion from the rffe
 else
 	% if there are no models for this carrier frequency use ideal
@@ -67,12 +83,13 @@ if isHPC
 		arrayId = randi([0,100]);
 	end
 	rng(str2double(arrayId),'twister');
-	nit = 20;	% number of iterations
+	nit = 20;	% number of slots
 else
 	rng('shuffle');
 	arrayId = 0;
-	nit = 1;	% number of iterations
+	nit = 1;	% number of slots
 end
+
 %% Create the antenna arrays for the gNB and the UE
 
 % Constants
@@ -128,7 +145,7 @@ nadc = length(adcTest);				% num of adc
 nlna = size(lnaAmpLut, 3);			% num of lna
 nmix = size(mixAmpLut, 4);			% num of mixer
 nplo = length(mixPLO);				% num of input LO power to the mixer
-ndrivers = length(0:log2(nrx));		% num of LO drivers
+ndrivers = length(0:log2(nrx));		% num of LO driver configurations
 nsim = nlna * nmix * nplo * nadc;	% num of simulations
 
 % Intialize the output SNR vector
@@ -136,8 +153,8 @@ snrOut = zeros(nsnr, nsim, nit);
 
 % Loop over the slots
 for it = 1:nit
-tic;
 	fprintf('\nSlot: %d\n',it);
+	tic;
 	
 	if isLOS
 		gain = 0;
@@ -219,9 +236,11 @@ tic;
 	% If it is possible run parrallel simulations to calculate the output
 	% SNR of a linear receiver
 	parfor isim = 1:nsim
-		snrOut(:, isim, it) = rx{isim}.step(y);
+		snrOut(:, isim, it) = rx{isim}.step(y);	% Output SNR [dB]
 	end
-toc;
+	
+	% print the processing time for each slot
+	toc;
 end
 
 % Average over all iterations.
@@ -249,7 +268,7 @@ end
 % power; (b) saturation SNR that is dominant in high SNR. Using these
 % values we can fit a model for the output SNR as follows,
 
-% For non-linear system we empirically show that the output SNR can be
+% For a non-linear system we empirically show that the output SNR can be
 % calculated by the following formula
 nom = nrx * 10.^(0.1*snrInTest);
 denom = reshape(10.^(0.1*rffeNF), [], nsim) + ...
@@ -266,4 +285,4 @@ clear tx chan rx simParam arrgNB arrgNB0 arrUE arrUE0 elem elemInterp rnd ...
 	dsep gain urx wrx utx wtx groundPlaneLen dlySpread;
 
 % save the simulation results
-save(sprintf('nrData_%d.mat', arrayId));
+save(sprintf('rffeData%d.mat', arrayId));

@@ -1,5 +1,5 @@
 %% Load the simulation data
-load('aqnmData1.mat');
+load('rffeData0.mat');
 
 %% Plot the Output SNR for all configurations
 

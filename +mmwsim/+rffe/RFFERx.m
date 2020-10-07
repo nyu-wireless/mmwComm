@@ -10,13 +10,13 @@ classdef RFFERx < matlab.System
 		EkT;				% thermal noise energy
 		xvar = 1;			% variance of the tx symbols
 			
-		lnaGain = 24;		% LNA gain in dB
-		lnaNF = 12.7735;	% LNA noise figure in dB
+		lnaGain;			% LNA gain in dB
+		lnaNF;				% LNA noise figure in dB
 		lnaAmpLut;			% LNA fund tone power curve
 		lnaPower;			% LNA power in mW
 		
-		mixGain = 1;		% mixer gain in dB
-		mixNF = 30;			% mixer noise figure in dB
+		mixGain;			% mixer gain in dB
+		mixNF;				% mixer noise figure in dB
 		mixAmpLut;			% mixer fund tone power curve
 		mixPLO;				% local oscillator power
 		mixPower;			% mixer power in mW
@@ -70,7 +70,7 @@ classdef RFFERx < matlab.System
 			etaOpt = 0.25;				% maximum power-added efficiency (PAE)
 			Popt = 10^(0.1*10);			% maximum output power in mW
 			Pin = 10^(0.1*(-5));		% input power of the LO signal to the power divider in mW
-			Pmul = 48;					% power consumption of the LO generation network in mW
+			Pmul = 43;					% power consumption of the LO generation network in mW
 			PLO = 10^(0.1*obj.mixPLO);	% power required at the input of each mixer in mW
 			
 			loPower = zeros(ndriver,1);

@@ -13,4 +13,4 @@ module load matlab/2020a
 RUNDIR=$SCRATCH/mmwComm/projects/dlThroughput
 cd $RUNDIR
 
-matlab -nodisplay -nodesktop -r "run NRTest.m"
+matlab -nodisplay -nodesktop -r "run rffeTest.m"
