@@ -1,11 +1,10 @@
 %% RFFE with Non-Linear Components
-% This project measures the performance and the power consumption of
-% fully-digital receiver RF front-end (RFFE) with non-linear components. 
-% This repository provides realistic models for LNA and IF-Mixer at 140 GHz
-%
-% The models for the RFFE components used in this project have been 
-% designed by 
-% * Navid Hosseinzadeh, University of California Santa Barbara (UCSB)
+% This project evaluates a single-input multi-output (SIMO) system at 
+% millimeter-wave (mmWave) and terahertz (THz) frequencies. The simulation 
+% contains realistic models of RF front-end (RFFE) components for the 
+% receiver. For every RFFE configuration we measure the end-to-end 
+% performance and the receiver power consumption. We develop a generic 
+% model for characterizing the performance using two key parameters.
 
 %% Packages
 % Add the folder containing +mmwsim to the MATLAB path.
@@ -19,7 +18,7 @@ isLinear = false;	% include the RFFE non-linear distortion
 % Input SNR Es/N0 relative to thermal noise
 snrInTest = linspace(-10, 50, 31)';
 
-% ADC resolution (4-bit, 5-bit, 6-bit). For inf-bit use 0
+% ADC resolution (4-bit, 5-bit, 6-bit). For inf-bit use 0.
 adcTest = [4, 5, 6];
 
 % Transmit symbol type:  'iidGaussian' or 'iidPhase'
@@ -30,7 +29,7 @@ chanType = 'iidPhase';
 
 % Load the RFFE models
 if fc == 140e9
-	load('rffe_140GHz.mat');
+	load('rffe140GHz.mat');
 	
 	% We consider a receiver at 140 GHz for 6G communications. The 
 	% bandwidth is calculated based on 3GPP NR waveforms with carrier
@@ -69,7 +68,7 @@ nadc = length(adcTest);				% num of adc
 nlna = size(lnaAmpLut, 3);			% num of lna
 nmix = size(mixAmpLut, 4);			% num of mixer
 nplo = length(mixPLO);				% num of input LO power to the mixer
-ndrivers = length(0:log2(nrx));		% num of LO drivers
+ndrivers = length(0:log2(nrx));		% num of LO driver configurations
 nsim = nlna * nmix * nplo * nadc;	% num of simulations
 
 % Intialize vectors
@@ -78,14 +77,14 @@ sim = cell(nsim, 1);
 
 for it = 1:nit
 	fprintf('\nIteration: %d\n',it);
-tic;
+	tic;
 	% Create all possible combinations.
 	isim = 1;
 	for iadc = 1:nadc
 		for ilna = 1:nlna
 			for imix = 1:nmix
 				for iplo = 1:nplo
-					sim{isim} = aqnmSim(...
+					sim{isim} = AqnmSim(...
 						'nrx', nrx, ...
 						'lnaNF', lnaNF(ilna), ...
 						'lnaGain', lnaGain(ilna), ...
@@ -110,9 +109,11 @@ tic;
 	
 	% If it is possible run parrallel simulations using `parfor`
 	parfor isim = 1:nsim
-		snrOut(:, isim, it) = sim{isim}.step(); % Output SNR
+		snrOut(:, isim, it) = sim{isim}.step(); % Output SNR [dB]
 	end
-toc;
+	
+	% print the processing time for each slot
+	toc;
 end
 
 % Average over all iterations.
@@ -131,7 +132,8 @@ for isim = 1:nsim
 	rffeNF(isim) = sim{isim}.nf();			% Effective noise figure [dBm]
 end
 
-% Find the minimum power for each theta based on the different LO drivers.
+% Find the minimum power for each parameter setting. The `idriver` will 
+% denote the number of LO drivers.
 [rffePower, idriver] = min(rffePower, [], 2);
 
 %% Fit a model
@@ -140,7 +142,7 @@ end
 % power; (b) saturation SNR that is dominant in high SNR. Using these
 % values we can fit a model for the output SNR as follows,
 
-% For non-linear system we empirically show that the output SNR can be
+% For non-linear systems we empirically show that the output SNR can be
 % calculated by the following formula
 nom = nrx * 10.^(0.1*snrInTest);
 denom = reshape(10.^(0.1*rffeNF), [], nsim) + ...
@@ -154,4 +156,4 @@ rffeModel = 10*log10(nom./denom);
 clear sim it hpc isim isnr ilna imix iplo iadc nom denom noiseTemp EkT;
 
 % save the simulation results
-save(sprintf('aqnmData_%d.mat', arrayId));
+save(sprintf('aqnmData%d.mat', arrayId));
