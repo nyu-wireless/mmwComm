@@ -1,5 +1,7 @@
 # Symbol Level Simulation
----
+
+## Overview
+
 This project evaluates a single-input multi-output (SIMO) system at millimeter-wave (mmWave) and terahertz (THz) frequencies. The simulation contains realistic models of RF front-end (RFFE) components for the receiver. The RFFE models have been extracted from detailed circuit-level simulations, representing an extremely realistic characterization of the true circuit performance. For every RFFE configuration we measure the end-to-end performance and the receiver power consumption. We develop a generic model for characterizing the performance using two key parameters.
 
 ## Files
