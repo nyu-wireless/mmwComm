@@ -1,4 +1,4 @@
-classdef PDSCHSimParam < matlab.System
+ classdef PDSCHSimParam < matlab.System
     % PDSCHSimParam:  Parameters for the PDSCHSimParam    
     properties
                 
