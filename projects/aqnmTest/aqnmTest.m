@@ -4,8 +4,8 @@
 % This repository provides realistic models for LNA and IF-Mixer at 140 GHz
 %
 % The models for the RFFE components used in this project have been 
-% designed by the Post-Doctoral Researcher Navid Hosseinzadeh, 
-% University of California Santa Barbara (UCSB).
+% designed by 
+% * Navid Hosseinzadeh, University of California Santa Barbara (UCSB)
 
 %% Packages
 % Add the folder containing +mmwsim to the MATLAB path.

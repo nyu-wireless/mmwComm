@@ -1,5 +1,5 @@
 classdef aqnmSim < matlab.System
-	% aqnmSIM: 
+	% aqnmSIM: main symulation class	
 	
 	properties
         % Simulation parameters
