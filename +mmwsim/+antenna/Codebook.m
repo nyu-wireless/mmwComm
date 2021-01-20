@@ -176,11 +176,11 @@ classdef Codebook < matlab.mixin.SetGetExactNames
                 Zi = (Ui.') .* 10.^(0.05*elemGaini');
                 
                 % Get BF gain on each codeword 
-                rho = abs(Zi(:,:,i)*obj.W(:,:,i)).^2;
+                rho = abs(Zi(:,:)*obj.W(:,:,i)).^2;
                 
                 % Find the best codeword within the array
                 [bfGainLin, indCode(:,i)] = max(rho,[],2);
-                bfGainArr = 10*log10(bfGainLin);                                             
+                bfGainArr(:, i)  = 10*log10(bfGainLin);                                             
             end
             
             % Get optimal over all arrays
