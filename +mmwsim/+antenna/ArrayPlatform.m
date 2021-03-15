@@ -95,7 +95,65 @@ classdef ArrayPlatform < matlab.System
                 zeros(3,1), obj.axesLoc) + reshape(obj.pos,3,1);
         end
         
-       
+        function gain = getResponse(obj,az,el,w,relSV)
+            % Computes the complex gain given angles and BF directions
+            
+            % Get default values
+            if nargin < 4
+                w = 1;
+            end
+            if nargin < 5
+                relSV = false;
+            end
+            
+            % Get SV and element gain
+            [u, elemGain] = obj.step(az,el,relSV);
+            
+            % Compute gain
+            elemGain = 10.^(0.05*elemGain);
+            gain = (w.'*u) .* elemGain;
+                        
+            
+        end
+        
+        function [gain,az,el] = getResponse2D(obj,az,el,w)
+            % Gets the complex gain on a 2D angular grid
+            % 
+            % If w is nant x 1, this produces a gain matrix of 
+            % size nel x naz representing the complex gain in 
+            % each azimuth and elevation angle.  If w is nant x nw, 
+            % gain is nw x nel x naz representing the complex gain in 
+            % each azimuth and elevation angle and beamforming direction.
+            
+            % Set default angles to test
+            if nargin < 2
+                az = (-180:2:180)';
+            end
+            if nargin < 3
+                el = (-90:2:90)';
+            end
+            if nargin < 4
+                w = 1;
+            end
+            
+            % Get grid of values
+            [azMat, elMat] = meshgrid(az, el);
+            azVal = azMat(:)';
+            elVal = elMat(:)';
+            
+            % Get SV and element gain
+            gain = obj.getResponse(azVal,elVal,w,true);
+            
+            % Reshape to a matrix
+            nel = length(el);
+            naz = length(az);
+            nw = size(w,2);
+            if (nw == 1)
+                gain = reshape(gain, nel, naz);
+            else 
+                gain = reshape(gain, nw, nel, naz);
+            end
+        end
     end
     
     methods (Access = protected)
