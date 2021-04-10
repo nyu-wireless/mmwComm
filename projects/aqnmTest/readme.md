@@ -20,4 +20,5 @@ This project is developed and tested on MATLAB R2020a. The project depends on th
 
 ## Acknowledgements
 The detailed simulation models of the RFFE components have been developed by:
-- Navid Hosseinzadeh,  University of California Santa Barbara (UCSB)
+- Navid Hosseinzadeh, University of California Santa Barbara (UCSB)
+- James F. Buckwalter, University of California Santa Barbara (UCSB)
