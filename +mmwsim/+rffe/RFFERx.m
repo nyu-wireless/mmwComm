@@ -160,11 +160,14 @@ classdef RFFERx < matlab.System
             
 			if ~obj.isLinear
 				% Apply memory-less non linearity 
-				for i = 2:nstage-1
+				for i = 2:nstage-2
 					x = obj.elem{i}.step(x);
 				end
 			end
 			
+			% The last stage of the RFFE is the ADC
+			x = obj.elem{nstage-1}.step(x);
+            
 			% The last stage of the RFFE is the ADC
 			y = obj.elem{nstage}.step(x);
 		end
