@@ -166,7 +166,10 @@ classdef RFFERx < matlab.System
 			end
 			
 			% The last stage of the RFFE is the ADC
-			x = obj.elem{nstage-1}.step(x);
+            
+            if obj.nbits ~= 0
+                x = obj.elem{nstage-1}.step(x);
+            end
             
 			% The last stage of the RFFE is the ADC
 			y = obj.elem{nstage}.step(x);
