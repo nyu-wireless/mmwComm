@@ -46,6 +46,8 @@ classdef PHYRx < matlab.System
 			elseif obj.ncc == 8
 				obj.fcc = [-700e6, -500e6, -300e6, -100e6, ...
 							 100e6, 300e6, 500e6, 700e6];
+            elseif obj.ncc == 2
+                obj.fcc = [-100e6, 100e6];
 			else
 				obj.fcc = 0;
 			end
