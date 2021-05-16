@@ -4,9 +4,8 @@ classdef InterpPatternAntenna < matlab.System
     % generally performs nearest neighbor interpolation which may not
     % be smooth
     properties
-        
         ant;  % Base antenna.  Must support a pattern method
-        fc;   % Frequency        
+        fc;   % Frequency
         dirInterp;  % Gridded interplant
     end
     
@@ -22,29 +21,28 @@ classdef InterpPatternAntenna < matlab.System
             end
         end
     end
-        
+    
     methods (Access = protected)
         
         function setupImpl(obj)
-            % setup:  This is called before the first step.            
+            % setup:  This is called before the first step.
             % We will use this point to create the interpolator.
             
             % Get the pattern from ant.pattern
             [dirPat,azPat,elPat] = obj.ant.pattern(...
-                obj.fc,'Type', 'Directivity');                     
+                obj.fc,'Type', 'Directivity');
             
             % Create the gridded interpolant object.
-            obj.dirInterp = griddedInterpolant({elPat,azPat},dirPat);         
+            obj.dirInterp = griddedInterpolant({elPat,azPat},dirPat);
             
         end
         function dir = stepImpl(obj, az, el)
             % Computes the directivity along az and el angles in the local
-            % reference frame         
+            % reference frame
             
             % Run the interplation object to compute the directivity
             % in the local angles
-            dir = obj.dirInterp(el,az);            
+            dir = obj.dirInterp(el,az);
         end
     end
 end
-

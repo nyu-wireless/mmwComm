@@ -1,7 +1,7 @@
 %% LOS MIMO capacity simulation
 % The program estimates the distribution of rates using high-rank LOS MIMO
 % on UAV-gNB link.  The simulation is as follows:
-% 
+%
 % * A gNB ground cell is fixed at the origin with an upward pointing
 %   antenna
 % * A UAV (UE) is randomly placed above the ground cell
@@ -34,7 +34,7 @@ nit = 100;  % number of trials per distance
 
 % Link budget parameters
 kT = -174;  % Thermal noise kT
-Ptx = 26;   % Transmit power 
+Ptx = 26;   % Transmit power
 fsamp = 1.6e9;  % Sample rate in Hz
 noiseFig = 6;     % noise figure
 
@@ -97,14 +97,14 @@ EtxN0 = Ptx - 10*log10(fsamp) - kT - noiseFig;
 %% Main simulation loop
 
 % Generate random UAV positions
-uePos = rand(nit,3).*(uePosMax-uePosMin) + uePosMin;    
+uePos = rand(nit,3).*(uePosMax-uePosMin) + uePosMin;
 
 rate = zeros(nit,1);
 for it = 1:nit
     
     % Generate a random position of the UE
     arrUE.set('pos', uePos(it,:) );
-        
+    
     % Find the narrowband channel
     chan = mmwsim.chan.LOSMIMOChan('rxArr', arrUE, 'txArr', arrgNB, ...
         'fc', fc);
@@ -121,9 +121,3 @@ plot(sort(rate),p, 'linewidth', 3);
 grid on;
 xlabel('Rate (bits/samp)');
 ylabel('CDF');
-
-
-
-
-
-

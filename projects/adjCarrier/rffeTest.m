@@ -238,7 +238,23 @@ end
 % Average over all iterations.
 snrOut = mean(snrOut, 3);
 %%
+Fs = 491.52;  % Sampling Frequency
+
+Fpass = 90;      % Passband Frequency
+Fstop = 100;     % Stopband Frequency
+Apass = 0.5;       % Passband Ripple (dB)
+Astop = 100;      % Stopband Attenuation (dB)
+match = 'both';  % Band to match exactly
+
+% Construct an FDESIGN object and call its ELLIP method.
+h  = fdesign.lowpass(Fpass, Fstop, Apass, Astop, Fs);
+Hd = design(h, 'ellip', 'MatchExactly', match);
+%%
+% x = x / sqrt(EkT/mean(abs(x).^2, 'all'));
+Hbf = ciirxform(Hd,'zpkshiftc', 0, -0.4);
+xfilt = filter(Hbf,x);
 xfd = fftshift(fft(x));
-plot(10*log10(abs(xfd)));
+f = linspace(-fsamp/2,fsamp/2,30944);
+plot(f, 20*log10(abs(xfd)));
 grid on;
 axis tight;

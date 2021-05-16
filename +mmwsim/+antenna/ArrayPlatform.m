@@ -16,7 +16,7 @@ classdef ArrayPlatform < matlab.System
         arr = [];
         
         % Steering vector object
-        sv = []; 
+        sv = [];
         
         % Azimuth and elevation angle of the element peak directivity
         axesAz = 0;
@@ -41,7 +41,7 @@ classdef ArrayPlatform < matlab.System
                 obj.set(varargin{:});
             end
         end
-                
+        
         function alignAxes(obj,az,el)
             % Aligns the axes to given az and el angles
             
@@ -67,14 +67,14 @@ classdef ArrayPlatform < matlab.System
             % of the path direction and velocity vector.
             vcos = obj.vel*u;
             vc = physconst('lightspeed');
-            dop = vcos*obj.fc/vc;            
+            dop = vcos*obj.fc/vc;
             
         end
         
         function releaseSV(obj)
             % Creates the steering vector object if it has not yet been
-            % created.  Otherwise release it.  This is needed since the 
-            % sv object requires that it takes the same number of 
+            % created.  Otherwise release it.  This is needed since the
+            % sv object requires that it takes the same number of
             % inputs each time.
             if isempty(obj.sv)
                 obj.sv = phased.SteeringVector('SensorArray',obj.arr);
@@ -86,7 +86,7 @@ classdef ArrayPlatform < matlab.System
         
         function elemPosGlob = getElementPos(obj)
             % Gets the array elements in the global reference frame
-           
+            
             % Get the element position in the local reference frame
             elemPosLoc = obj.arr.getElementPosition();
             
@@ -112,17 +112,17 @@ classdef ArrayPlatform < matlab.System
             % Compute gain
             elemGain = 10.^(0.05*elemGain);
             gain = (w.'*u) .* elemGain;
-                        
+            
             
         end
         
         function [gain,az,el] = getResponse2D(obj,az,el,w)
             % Gets the complex gain on a 2D angular grid
-            % 
-            % If w is nant x 1, this produces a gain matrix of 
-            % size nel x naz representing the complex gain in 
-            % each azimuth and elevation angle.  If w is nant x nw, 
-            % gain is nw x nel x naz representing the complex gain in 
+            %
+            % If w is nant x 1, this produces a gain matrix of
+            % size nel x naz representing the complex gain in
+            % each azimuth and elevation angle.  If w is nant x nw,
+            % gain is nw x nel x naz representing the complex gain in
             % each azimuth and elevation angle and beamforming direction.
             
             % Set default angles to test
@@ -150,7 +150,7 @@ classdef ArrayPlatform < matlab.System
             nw = size(w,2);
             if (nw == 1)
                 gain = reshape(gain, nel, naz);
-            else 
+            else
                 gain = reshape(gain, nw, nel, naz);
             end
         end
@@ -171,10 +171,10 @@ classdef ArrayPlatform < matlab.System
             obj.sv.release();
         end
         
-       function [u, elemGain] = stepImpl(obj, az, el, relSV)
+        function [u, elemGain] = stepImpl(obj, az, el, relSV)
             % Gets steering vectors and element gains for a set of angles
             % The angles az and el should be row vectors along which
-            % the outputs are to be computed.  
+            % the outputs are to be computed.
             % If the relSV == true, then the steering vector object is
             % released.  This is needed in case the dimensions of the past
             % call are the different from the past one
@@ -188,7 +188,7 @@ classdef ArrayPlatform < matlab.System
             end
             
             % Convert the global angles (az, el) to local
-            % angles (azLoc, elLoc).  Use the 
+            % angles (azLoc, elLoc).  Use the
             % global2localcoord() method with the 'ss' option.
             uglobal = [az; el; ones(1,length(az))];
             ulocal = global2localcoord(uglobal, 'ss', zeros(3,1), obj.axesLoc);
@@ -197,16 +197,10 @@ classdef ArrayPlatform < matlab.System
             
             % TODO: Get the SV in the local coordinates
             %    u = obj.sv(...)
-            u = obj.sv(obj.fc, [azLoc; elLoc]);  
-                        
-            % TODO:  Get the directivity gain of the element from the
-            % local angles.
-            %    elemGain = obj.elem.step(...) 
+            u = obj.sv(obj.fc, [azLoc; elLoc]);
+            
+            % Get the directivity gain of the element from the local angles.
             elemGain = obj.elem.step(azLoc, elLoc);
         end
-
     end
-    
-    
 end
-

@@ -17,6 +17,7 @@ classdef NRgNBTx < matlab.System
         ncc;		% number of component carriers
         fcc;		% component carrier center frequency
         wtx;		% tx beamforming vector
+        Hd;
     end
     
     methods
@@ -48,6 +49,19 @@ classdef NRgNBTx < matlab.System
             else
                 obj.fcc = 0;
             end
+            intf = 2;  % Interpolation Factor
+            
+            obj.Hd = dsp.FIRInterpolator( ...
+                'Numerator', [0 -0.000201076689085048 0 0.000774075413312963 0 ...
+                -0.00204280552852404 0 0.00445710811660247 0 -0.00861802747915486 0 ...
+                0.0153221434647724 0 -0.0256826399041755 0 0.0414711874768991 0 ...
+                -0.0661383425536059 0 0.108403813182309 0 -0.200342004700689 0 ...
+                0.632576096651248 1 0.632576096651248 0 -0.200342004700689 0 ...
+                0.108403813182309 0 -0.0661383425536059 0 0.0414711874768991 0 ...
+                -0.0256826399041755 0 0.0153221434647724 0 -0.00861802747915486 0 ...
+                0.00445710811660247 0 -0.00204280552852404 0 0.000774075413312963 0 ...
+                -0.000201076689085048], ...
+                'InterpolationFactor', intf);
         end
     end
     
@@ -98,18 +112,19 @@ classdef NRgNBTx < matlab.System
                     obj.ofdmGridLayer);
                 
                 % Upsample the Tx signal to the total bandwidth
-                xup = resample(xlayer, obj.ncc, 1);
-                
+                if 0
+                    xup = resample(xlayer, obj.ncc, 1);
+                else
+                    xup = obj.Hd(xlayer);
+                    xup = 1/obj.ncc*xup;
+                end
+                % filter here
                 % Use a NCO to shift the component carrier
                 xnco = mmwsim.nr.hCarrierAggregationModulate(xup, ...
                     obj.fsamp, obj.fcc(icc));
                 
                 % Perform the TX beamforming.
-                if icc == 1
-                    x(:,:,icc) = 100*xnco*obj.wtx';
-                else
-                    x(:,:,icc) = xnco*obj.wtx';
-                end
+                x(:,:,icc) = xnco*obj.wtx';
             end
             x = sum(x, 3);
             
