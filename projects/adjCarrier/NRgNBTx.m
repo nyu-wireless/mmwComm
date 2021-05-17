@@ -112,11 +112,11 @@ classdef NRgNBTx < matlab.System
                     obj.ofdmGridLayer);
                 
                 % Upsample the Tx signal to the total bandwidth
-                if 0
-                    xup = resample(xlayer, obj.ncc, 1);
-                else
+                if obj.ncc > 1
                     xup = obj.Hd(xlayer);
                     xup = 1/obj.ncc*xup;
+                else
+                    xup = xlayer;
                 end
                 % filter here
                 % Use a NCO to shift the component carrier

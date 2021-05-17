@@ -37,7 +37,7 @@ enableCA = false;	% enable carrier aggregation
 isHPC = false;		% run the simulation at the NYU HPC
 
 % Input SNR Es/N0 relative to thermal noise
-snrInTest = linspace(-10, 50, 5)';
+snrInTest = linspace(-10, 40, 5)';
 
 % ADC resolution (4-bit, 5-bit, 6-bit). For inf-bit use 0.
 adcTest = [4, 5, 6];
@@ -194,7 +194,7 @@ for it = 1:nit
 	y = chan.step(x);
 	
 	% Rescale so that it is Es/kT = 1
-	scale = sqrt(EkT/mean(abs(y).^2, 'all'));
+	scale = sqrt((fsamp*EkT)/mean(abs(y).^2, 'all'));
 	y = y * scale;
 			
 	% Create all possible receiver configurations
