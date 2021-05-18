@@ -1,10 +1,10 @@
 classdef ADC < matlab.System
     % ADC class with scaling.
     
-    properties	
+    properties
         % number of bits, 0 indicates no quantization
-        nbits = 6;    
-
+        nbits = 6;
+        
         % Output type:
         % "int":  signed int of the form,
         %     q = 2*k+1, k=-M/2 to M/2-1, M=2^nbits
@@ -12,49 +12,49 @@ classdef ADC < matlab.System
         %     q = stepSize*(k+0.5)
         % If isComplex, then this representation is used in I and Q
         outputType = "int";
-
+        
         
         isComplex = true;    % complex input
         stepSize = 1.0;          % step size
         dither = false;      % enable dithering
-                
-		% ADC scaling parameters
-		nscal = 10000;       % number of samples used for calibration
+        
+        % ADC scaling parameters
+        nscal = 10000;       % number of samples used for calibration
         
         % Parameters for linear model:
         %    Q(x) = linGain*x + N(0,quantVar),   x~N(0,inputVar)
-		inputVar = 1;       % input variance        
-        linGain = 1;    
+        inputVar = 1;       % input variance
+        linGain = 1;
         quantVar = 1;
         quantVar1 = 1;
         mseOpt = 0;         % Optimal MSE in dB
-	end
+    end
     
     % Quantizer methods.  All methods are static
-    methods 
+    methods
         
         function obj = ADC(varargin)
             % Constructor
             % Set parameters from constructor arguments
             if nargin >= 1
                 obj.set(varargin{:});
-            end      
+            end
         end
         
         % Performs the quantization providing integer and floating
         % point values
-        function [qfloat,qint] = qsat(obj, x0)            
+        function [qfloat,qint] = qsat(obj, x0)
             if (obj.nbits == 0)
                 % No quantization
                 qint = x0;
                 qfloat = x0;
                 return
             end
-
+            
             
             % Scale the input
-            x = x0 / obj.stepSize;            
-
+            x = x0 / obj.stepSize;
+            
             % Dithering
             if obj.dither
                 if obj.isComplex
@@ -65,7 +65,7 @@ classdef ADC < matlab.System
                 end
                 x = x + d;
             end
-
+            
             M2 = 2^(obj.nbits-1);
             if obj.isComplex
                 % Perform quantization for complex signals
@@ -73,8 +73,8 @@ classdef ADC < matlab.System
                 xi = floor(imag(x));
                 qr = max(min(xr,M2-1), -M2)+0.5;
                 qi = max(min(xi,M2-1), -M2)+0.5;
-                qint = qr + 1i*qi;                
-            else                          
+                qint = qr + 1i*qi;
+            else
                 % Perform quantization for complex signals
                 x = floor(real(x));
                 qint = max(min(x,M2-1), -M2)+0.5;
@@ -86,9 +86,9 @@ classdef ADC < matlab.System
             
             % Remove dithering
             if obj.dither
-               qfloat = qfloat - d*obj.stepSize;
+                qfloat = qfloat - d*obj.stepSize;
             end
-                
+            
         end
         
         % Sets scaling values from a different ADC
@@ -99,13 +99,13 @@ classdef ADC < matlab.System
             obj.linGain = adc1.linGain;
             obj.mseOpt = adc1.mseOpt;
         end
-               
+        
         
         % Finds the optimal quantizer scale level.
         % The optimal value is found by searching over values aq to
         % minimize
         %   mse = E(x - qsat(x,nb,aq))^2
-        % when x = N(0,inputVar).  
+        % when x = N(0,inputVar).
         function optScale(obj)
             
             % Handle case with infinite resolution
@@ -138,11 +138,11 @@ classdef ADC < matlab.System
             end
             
             % Select scaling with minimal distortion
-            [~, im] = min(mse);   
+            [~, im] = min(mse);
             obj.stepSize = stepTest(im);
-
+            
             % Find parameters for a linear AQN model
-            %    qsat(x) = linGain*x + N(0, quantVar)                     
+            %    qsat(x) = linGain*x + N(0, quantVar)
             [qf, qi] = obj.qsat(x);
             if strcmp(obj.outputType, 'int')
                 q = qi;
@@ -157,12 +157,12 @@ classdef ADC < matlab.System
             %    mseOpt = var(x|q)/var(x)
             obj.mseOpt = 10*log10( obj.quantVar/...
                 (obj.inputVar*obj.linGain^2 + obj.quantVar) );
-                       
+            
         end
     end
     
-     methods (Access = protected)
-       		
+    methods (Access = protected)
+        
         function q = stepImpl(obj, x)
             % Step function:  Performs the quantization
             [qf, qi] = obj.qsat(x);
@@ -172,5 +172,5 @@ classdef ADC < matlab.System
                 q = qf;
             end
         end
-     end
+    end
 end

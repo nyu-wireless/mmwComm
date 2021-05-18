@@ -33,11 +33,11 @@ nrx = nantUE(1)*nantUE(2);	% num of receive antenna
 
 isFixPoint = false;	% use low resolution PHY-layer processing
 isLOS = true;		% use a single line-of-sight path
-enableCA = true;	% enable carrier aggregation
+enableCA = false;	% enable carrier aggregation
 isHPC = false;		% run the simulation at the NYU HPC
 
 % Input SNR Es/N0 relative to thermal noise
-snrInTest = linspace(-10, 50, 21)';
+snrInTest = linspace(-10, 70, 21)';
 
 % ADC resolution (4-bit, 5-bit, 6-bit). For inf-bit use 0.
 adcTest = [4, 5, 6];
@@ -87,7 +87,7 @@ if isHPC
 else
     rng('shuffle');
     arrayId = 0;
-    nit = 1;	% number of slots
+    nit = 5;	% number of slots
 end
 
 %% Create the antenna arrays for the gNB and the UE
@@ -198,8 +198,8 @@ for it = 1:nit
     x = tx.step();
     y = chan.step(x);
     
-    % Rescale so that it is Es/kT = 1
-    scale = sqrt(EkT/mean(abs(y).^2, 'all'));
+    % Rescale so that it is Es/(fs*kT) = 1
+    scale = sqrt((fsamp*EkT)/mean(abs(y).^2, 'all'));
     y = y * scale;
     
     % Create all possible receiver configurations
@@ -236,9 +236,16 @@ for it = 1:nit
 end
 
 % Average over all iterations.
-snrOut = mean(snrOut, 3);
-%%
-xfd = fftshift(fft(x));
-plot(10*log10(abs(xfd)));
-grid on;
+snrOut = mean(snrOut, 2);
+%% Plot the Output SNR
+
+figure(1); clf; 
+plot(Pin, snrOut, '-', 'linewidth', 1.5);
+box on;
 axis tight;
+xlabel('Receive power per antenna [dBm]', 'interpreter', 'latex', ...
+	'fontsize', 13);
+ylabel('Output SNR $\;(\gamma_\mathrm{out})\;$ [dB]', ...
+	'interpreter', 'latex', ...
+	'fontsize', 13);
+grid on;

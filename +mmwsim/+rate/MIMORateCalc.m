@@ -18,7 +18,7 @@ classdef MIMORateCalc < matlab.System
         specEffMax = 4.8; % maximum spectral efficiency per stream
         snrLoss = 3;      % SNR loss from Shannon limit
         bwLoss = 0.2;     % bandwidth overhead
-                
+        
         % Parameters for last capacity calculation
         U, V;       % Linear TX and RX matrices
         s;          % singular values along H
@@ -39,12 +39,12 @@ classdef MIMORateCalc < matlab.System
         end
         
         function rate = computeRate(obj,H,snr)
-            % Computes the rate of the channel. 
+            % Computes the rate of the channel.
             %
             % The snr=Es/N0 in dB where
             % Es = E\|x\|^2 is the TX symbol energy across all TX antennas
             % and N0 = E|w(k)|^2 is the RX noise energy per antenna
-
+            
             % Take the SVD
             [obj.U, S, obj.V] = svd(H, 0);
             obj.s = diag(S);
@@ -55,14 +55,14 @@ classdef MIMORateCalc < matlab.System
             else
                 snrLin = 10^(0.1*snr);
             end
-                            
+            
             % Compute rate as a function of the number of streams
             if obj.nstreamsMax > 0
-                r = min(length(obj.s), obj.nstreamsMax);            
+                r = min(length(obj.s), obj.nstreamsMax);
             else
                 r = length(obj.s);
             end
-            obj.rateStr = zeros(r,1);            
+            obj.rateStr = zeros(r,1);
             for i = 1:r
                 % Capacity assuming power is allocated uniformly
                 % across all streams
@@ -72,11 +72,10 @@ classdef MIMORateCalc < matlab.System
                     obj.rateStr(i) = (1-obj.bwLoss)*sum(c);
                 else
                     obj.rateStr(i) = sum(c);
-                end                                                                    
+                end
             end
             
             rate = max(obj.rateStr);
         end
     end
 end
-
