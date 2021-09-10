@@ -26,6 +26,10 @@ classdef RFFERx < matlab.System
         fsamp = 1e9;		% sample rate
         
         elem;				% rffe elements
+        isFD = true;
+        psLoss = 16;        % phase shifter loss in dB
+        iir;
+        isFilter = false;
     end
     
     methods
@@ -38,6 +42,8 @@ classdef RFFERx < matlab.System
             end
             
             obj.EkT = physconst('Boltzman')*obj.noiseTemp;
+            
+            obj.iir = mmwsim.rffe.IIRFilter();
         end
         
         function NF = nf(obj)
@@ -154,12 +160,22 @@ classdef RFFERx < matlab.System
             obj.elem = {tn, lnaNoise, lnaAmp, mixNoise, mixAmp, bbAGC, adc};
         end
         
-        function y = stepImpl(obj, x)
+        function y = stepImpl(obj, x, w)
             % Find the number of RFFE elements
             nstage = length(obj.elem);
             
             % Add thermal noise
             x = obj.elem{1}.step(x);
+            
+            % if the receiver uses analog or hybrid beamforming apply the 
+            % phase shifter loss.
+            if ~obj.isFD
+                x = x - mean(x, 'all');
+                x = x .* sqrt(10^(-0.1*(obj.psLoss)));
+                % x = sum(x.*conj(w),2) ./ sum(abs(w).^2,2);
+                wrx = conj(w)./abs(w);
+                x = x*wrx;
+            end
             
             if ~obj.isLinear
                 % Apply memory-less non linearity
@@ -168,7 +184,12 @@ classdef RFFERx < matlab.System
                 end
             end
             
-            % The last stage of the RFFE is the ADC
+            
+            if obj.isFilter
+                x = obj.iir.step(x);
+            end
+            
+            % This stage is the AGC
             
             if obj.nbits ~= 0
                 x = obj.elem{nstage-1}.step(x);
