@@ -102,7 +102,7 @@ for islot = 1:nslot
             xnoisy = x .* 10^(0.05*snrSigTest(isig));
             for iint = 1:nint
                 % Scale the noise power
-                znoisy = z .* 10^(0.05*snrSigTest(iint));
+                znoisy = z .* 10^(0.05*snrIntTest(iint));
                 
                 % The output SNR at that signal and interference level
                 snrOut(isig, iint, idsn, islot) = rx{idsn}.step(xnoisy+znoisy);
