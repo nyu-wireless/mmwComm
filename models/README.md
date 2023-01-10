@@ -1,5 +1,3 @@
-# Data
-
 ## Files
 - ```rffe_140GHz.mat```: This file contains the RFFE models for 140 GHz.
 - ```rffe_28GHz.mat```: This file contains the RFFE models for 28 GHz.

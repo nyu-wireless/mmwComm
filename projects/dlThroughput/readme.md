@@ -15,9 +15,10 @@ The project contains the following MATLAB scripts, classes, and data:
 - ```rffePlot.m```: This script generates plots for analyzing the components, the end-to-end performance and the power consumption for each RFFE configuration.
 - ```MultiInput.m```: This class replicates a MATLAB system object with multiple inputs.
 - ```rffe_140GHz.mat```: This file contains the RFFE models for 140 GHz.
+- ```rffe_140GHz.mat```: This file contains the RFFE models for 28 GHz.
 
 ## Dependencies
-This project is developed and tested on MATLAB R2020a. The project depends on the following toolbox and packages:
+This project is developed and tested on MATLAB R2020b. The project depends on the following toolbox and packages:
 - Simulink
 - 5G Toolbox
 - Antenna Toolbox
@@ -31,4 +32,5 @@ This project is developed and tested on MATLAB R2020a. The project depends on th
 ## Acknowledgements
 The detailed simulation models of the RFFE components have been developed by:
 - Navid Hosseinzadeh,  University of California Santa Barbara (UCSB)
+- Wonho Lee,  University of California Santa Barbara (UCSB)
 - James F. Buckwalter, University of California Santa Barbara (UCSB)

@@ -106,7 +106,8 @@ classdef MIMOMPChan < matlab.System
             % (nsamp+1) x npath matrix
             %     phase(i,k) = phase rotation on sample i and path k
             nsamp = size(x,1);
-            phase = 2*pi*(0:nsamp)'*obj.dop/obj.fsamp + obj.phaseInit;
+            % phase = 2*pi*(0:nsamp)'*obj.dop/obj.fsamp + obj.phaseInit;
+            phase = repmat(obj.phaseInit, [nsamp+1,1]);
             
             % Save the final phase, phase(nsamp+1,:) as phaseInit for the
             % next step.
