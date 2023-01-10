@@ -40,19 +40,6 @@ classdef PHYRx < matlab.System
     
     methods (Access = protected)
         function setupImpl(obj)
-            % Find the center frequency for each component carrier.
-            if obj.ncc == 4
-                obj.fcc = [-150e6, -50e6, 50e6, 150e6];
-            elseif obj.ncc == 8
-                obj.fcc = [-700e6, -500e6, -300e6, -100e6, ...
-                    100e6, 300e6, 500e6, 700e6];
-            elseif obj.ncc == 2
-                obj.fcc = [-100e6, 100e6];
-            else
-                obj.fcc = 0;
-            end
-            obj.fcc = -obj.fcc;
-            
             % Create a fixed-point FIR low pass filter for low-resolution
             % baseband processing.
             if obj.isFixPoint
