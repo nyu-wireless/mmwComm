@@ -104,7 +104,7 @@ if ~isLOS
     aodAz  = chaninfo.AnglesAoD;
     aodEl = 90-chaninfo.AnglesZoD;
     dly = chaninfo.PathDelays;
-    
+
     % Find the paths with maximum gain
     [gainmax, im] = max(gain);
 end
@@ -160,7 +160,7 @@ for islot = 1:nslot
     wrx = conj(urx(:,im)); % RX direction at the UE
     wrx = wrx / norm(wrx);
 
-        
+
     gNB = NRgNBTx(...
         'carrierConfig', carrierConfig, ...
         'pdschConfig', pdschConfig, ...
@@ -177,10 +177,10 @@ for islot = 1:nslot
         'txArr', arrgNB, ...
         'dly', dly, ...
         'fsamp', waveformConfig.SampleRate);
-        
+
     % Create TX and RX
     z = gNB.step();
-    z = z*wtx';  % Apply TX beamforming 
+    z = z*wtx';  % Apply TX beamforming
     z = z - mean(z, 'all');  % Make sure the TX signal is zero mean
     y = chan.step(z);  % pass the TX signal through a channel
 
@@ -209,7 +209,7 @@ for islot = 1:nslot
             'isLinear', isLinear, ...
             'isFD', isFD, ...
             'nrx', nrx);
-        
+
         snrSigTest = linspace(-10, 50, nsig);
         for isig = 1:nsig
             % Scale the signal power
@@ -223,7 +223,7 @@ for islot = 1:nslot
             dvar = mean(abs(xhat - a*x).^2);
             snrOut(isig, idsn, islot) = 10*log10(abs(a).^2*xvar/dvar);
         end
-        
+
         ue.rffe.SampleRate = waveformConfig.SampleRate*8;
         nf(idsn) = ue.rffe.nf();
         [power(idsn), idx(idsn)] = min(ue.rffe.power());
@@ -244,7 +244,7 @@ ylabel('Output SNR $\;(\gamma_\mathrm{out})\;$ [dB]', ...
     'interpreter', 'latex', ...
     'fontsize', 13);
 legend('Fully-Digital', 'Analog (Active)', ...
-     'Analog (Passive -15 dB)', 'Analog (Passive -10 dB)', 'location', 'best');
+    'Analog (Passive -15 dB)', 'Analog (Passive -10 dB)', 'location', 'best');
 
 for idsn = 1:ndsn
     fprintf(1, "Pdc: %.0f mW\tNF: %.2f dB\n", power(idsn), nf(idsn));
@@ -288,8 +288,8 @@ s = surf(X, Y, p, 'EdgeColor', [0 0 0], 'LineStyle', '-', 'FaceLighting', 'goura
     'FaceAlpha', 1, 'EdgeAlpha', 0.2);
 
 ylabel('Target saturation SNR $\;(\gamma_\mathrm{sat}^\mathrm{tgt})\;$ [dB]', ...
-     'interpreter', 'latex', ...
-     'fontsize', 13);
+    'interpreter', 'latex', ...
+    'fontsize', 13);
 xlabel('Target noise figure $\;(F^\mathrm{tgt})\;$ [dB]', ...
     'interpreter', 'latex', 'fontsize', 13);
 zlabel('Power Consumption [mW]', ...
